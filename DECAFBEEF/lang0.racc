@@ -1,0 +1,86 @@
+class Lang0
+
+token TYPE NAME NUM '='
+token 'if' 'else'
+token '(' ')'
+token OPERATOR
+token ';' ',' 'const'
+token '{' '}' 'return'
+
+start s
+rule
+
+s : decs states                                     { result = Root.new("S", val[0], val[1]) }
+
+decs : TYPE decbody ';' decs                        { result = Decs.new("DEC", val[0], val[1], val[3]) }
+    | 'const' TYPE decbody ';' decs                 { result = Decs.new("CONSTDEC", val[1], val[2], val[4]) }
+    |                                               {result = nil}
+
+decbody : NAME ',' decbody                          { result = DecBody.new("DECBODY", Expr.new("NAME", val[0]), val[2]) }
+    | NAME                                          { result = Expr.new("NAME", val[0]) }
+	| assignment                                    { result = Expr.new("ASS", val[0]) }
+
+assignment : NAME '=' expr                          { result = Assign.new("=", Expr.new("NAME", val[0]), val[2]) }
+
+states : rxpr ';' states                            { result = States.new("STATES", val[0], val[2]) }
+      | if states                                   { result = States.new("STATES", val[0], val[1]) }
+      |                                             {}
+
+rxpr : 'return' expr                                { result = RExpr.new("RETURN", val[0]) }
+     | expr                                         { result = val[0] }
+
+
+expr :  NAME OPERATOR expr                          { result = Expr.new(val[1], Expr.new("NAME", val[1]), val[2]) }
+     | NUM OPERATOR expr                            { result = Expr.new(val[1], Expr.new("NUM", val[1]), val[2]) }
+     | '(' expr ')' OPERATOR expr                   { result = Expr.new(val[3], val[1], val[4]) }
+     | '(' expr ')'                                 { result = val[1] }
+     | NAME                                         { result = Expr.new("NAME", val[0]) }
+     | NUM                                          { result = Expr.new("NUM", val[0]) }
+     | assignment                                   { result = Expr.new("ASS", val[0]) }
+
+
+if : 'if' '(' expr ')' '{' states '}' 'else'  rxpr ';'      { result = IfNode.new("IFELSE", val[2], val[5], val[8]) }
+   | 'if' '(' expr ')' '{' states '}' 'else'  if            { result = IfNode.new("IFELSE", val[2], val[5], val[8]) }
+   | 'if' '(' expr ')' '{' states '}' 'else' '{' states '}' { result = IfNode.new("IFELSE", val[2], val[5], val[9]) }
+   | 'if' '(' expr ')' '{' states '}'                       { result = IfNode.new("IF", val[2], val[5]) }
+
+end
+
+---- header ----
+
+require "./AST.rb"
+require "./lang0.rex"
+
+---- footer ----
+
+exe = Lang0.new
+    begin
+      root = exe.scan_str($stdin.read)
+      root.get_ids
+      root.get_children
+    rescue ParseError => e
+      puts 'Parsing error'
+      puts e.message
+      puts e.backtrace.inspect
+    end
+
+
+# str = gets
+# while str do
+#   puts "Inputed string = #{str}"
+
+#   if str != nil
+#     begin
+#       exe.scan_str(str)
+#     rescue ParseError => e
+#       puts 'Parsing error'
+#       puts e.message
+#       puts e.backtrace.inspect
+#     end
+
+#     puts
+#   end
+#   str = gets
+# end
+
+# vim:ft=racc:
