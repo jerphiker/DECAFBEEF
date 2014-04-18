@@ -13,12 +13,12 @@ class NameInterface
 	end
 
 	def getVar(var)
-		if symTab.has?(var)
-			puts " Found:" + @name + " address:" + symTab.get(var).to_s
-			return symTab.get(var)
+		if @symTab.has?(var)
+			puts " Found:" + @name + " address:" + @symTab.get(var).to_s
+			return @symTab.get(var)
 		else 
 			unless  @parent == nil
-				print "Not in:" + @name + " Checking parent:"
+				print " Not in:" + @name + " Checking parent:"
 				return @parent.getVar(var)
 			end
 		end
