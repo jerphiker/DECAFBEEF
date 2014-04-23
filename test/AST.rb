@@ -81,3 +81,44 @@ class BaseVisitor
     send(method_name, subject )
   end
 end
+
+class AstVisitor < BaseVisitor
+
+  def visit_Root subject
+    puts "#{subject.name} #{subject.attrib}"
+  end
+
+  def visit_Decs subject
+    puts "#{subject.name} #{subject.attrib}"
+  end
+
+  def visit_DecBody subject
+    puts "#{subject.name} #{subject.attrib}"
+  end
+
+  def visit_States subject
+    puts "#{subject.name} #{subject.attrib}"
+  end
+
+  def visit_Assign subject
+    puts "#{subject.name} #{subject.attrib}"
+  end
+
+  def visit_RExpr subject
+    puts "#{subject.name} #{subject.attrib}"
+  end
+
+  def visit_Expr subject
+    puts "#{subject.name} #{subject.attrib}"
+  end
+
+  def visit_IfNode subject
+    puts "#{subject.name} #{subject.attrib}"
+
+  end
+
+  def visit_Node subject
+    puts "#{subject.name} #{subject.attrib}"
+  end
+
+end

@@ -356,7 +356,9 @@ exe = Lang0.new
       ast = Ast.new(exe.scan_str($stdin.read))
       sym = SymbolTable.new
       ast.accept(sym)
+      ast.accept(AstVisitor.new)
       p sym.table
+      puts
       p sym.namespace
     rescue ParseError => e
       puts 'Parsing error'
