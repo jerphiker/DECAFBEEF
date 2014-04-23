@@ -1,0 +1,13 @@
+// language example 0
+const int apple = 1;
+int app = 1<<apple;
+int yellow, z = 3;
+
+yellow = z - app;
+if ( yellow <= 0 ) {
+  z = (app+2) + z*z ;
+} else {
+  z = z / yellow;
+}
+
+return z;
