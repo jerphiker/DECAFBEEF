@@ -7,7 +7,7 @@ macro
     LIT         if|else|return|const|[;,(){}=]
     IDCHAR      [a-z]
     DIGIT       [0-9]
-    OPERATOR    [<>=]=|[-+*\/%!.|&^<>]+
+    OPERATOR    [<>=]=|[%!.|&^<>]+
 rule
     {SPACE}+        { }
     {COMMENT}       { }

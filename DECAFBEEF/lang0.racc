@@ -7,6 +7,11 @@ token OPERATOR
 token ';' ',' 'const'
 token '{' '}' 'return'
 
+prechigh
+  left '*' '/'
+  left '+' '-'
+preclow
+
 start s
 rule
 
@@ -29,15 +34,15 @@ states : rxpr ';' states                            { result = States.new("STATE
 rxpr : 'return' expr                                { result = RExpr.new("RETURN", val[0]) }
      | expr                                         { result = val[0] }
 
-
-expr :  NAME OPERATOR expr                          { result = Expr.new(val[1], Expr.new("NAME", val[1]), val[2]) }
-     | NUM OPERATOR expr                            { result = Expr.new(val[1], Expr.new("NUM", val[1]), val[2]) }
-     | '(' expr ')' OPERATOR expr                   { result = Expr.new(val[3], val[1], val[4]) }
+expr :  expr OPERATOR expr                          { result = Expr.new(val[1], Expr.new("NAME", val[0]), Expr.new("NAME", val[1]), val[2]) }
+     | expr '+' expr                                { result = Expr.new("+", val[0], val[2]) }
+     | expr '-' expr                                { result = Expr.new("-", val[0], val[2]) }
+     | expr '*' expr                                { result = Expr.new("*", val[0], val[2]) }
+     | expr '/' expr                                { result = Expr.new("/", val[0], val[2]) }
      | '(' expr ')'                                 { result = val[1] }
-     | NAME                                         { result = Expr.new("NAME", val[0]) }
-     | NUM                                          { result = Expr.new("NUM", val[0]) }
+     | NAME                                         { result = Expr.new(val[0], val[0]) }
+     | NUM                                          { result = Expr.new(val[0], val[0]) }
      | assignment                                   { result = Expr.new("ASS", val[0]) }
-
 
 if : 'if' '(' expr ')' '{' states '}' 'else'  rxpr ';'      { result = IfNode.new("IFELSE", val[2], val[5], val[8]) }
    | 'if' '(' expr ')' '{' states '}' 'else'  if            { result = IfNode.new("IFELSE", val[2], val[5], val[8]) }
@@ -63,7 +68,6 @@ exe = Lang0.new
       puts e.message
       puts e.backtrace.inspect
     end
-
 
 # str = gets
 # while str do
