@@ -74,6 +74,11 @@ class Lang0WithErrors < Lang0
   end
 end
 
+outa = File.open("OUTPUT.a", "w")
+outp = File.open("OUTPUT.p", "w")
+outerr = File.open("OUTPUT.err", "w")
+outir = File.open("OUTPUT.err", "w")
+
 exe = Lang0WithErrors.new
     begin
       ast = Ast.new(exe.scan_str($stdin.read))
@@ -82,13 +87,18 @@ exe = Lang0WithErrors.new
       ast.accept(sym)
       # p sym.table
       # p sym.namespace
-      ast.root.get_ids
-      ast.root.get_children
+      ast.root.get_ids(outa, outp)
+      ast.root.get_children(outa, outp)
     rescue ParseError => e
       puts 'Parsing error'
       puts e.message
       puts e.backtrace.inspect
     end
+
+outa.close
+outp.close
+outerr.close
+outir.close
 
 # str = gets
 # while str do
