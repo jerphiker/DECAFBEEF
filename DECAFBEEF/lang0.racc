@@ -21,11 +21,11 @@ decs : TYPE decbody ';' decs                        { result = Decs.new("DEC", v
     | 'const' TYPE decbody ';' decs                 { result = Decs.new("CONSTDEC", val[1], val[1], val[2], val[4]) }
     |                                               {result = nil}
 
-decbody : NAME ',' decbody                          { result = DecBody.new("DECBODY", nil, Expr.new("NAME", val[0]), val[2]) }
-    | NAME                                          { result = Expr.new("NAME", val[0]) }
+decbody : NAME ',' decbody                          { result = DecBody.new("DECBODY", nil, Expr.new(val[0], val[0]), val[2]) }
+    | NAME                                          { result = Expr.new(val[0], val[0]) }
 	| assignment                                    { result = Expr.new("ASS", nil, val[0]) }
 
-assignment : NAME '=' expr                          { result = Assign.new("=", nil, Expr.new("NAME", val[0]), val[2]) }
+assignment : NAME '=' expr                          { result = Assign.new("=", nil, Expr.new(val[0], val[0]), val[2]) }
 
 states : rxpr ';' states                            { result = States.new("STATES", nil, val[0], val[2]) }
       | if states                                   { result = States.new("STATES", "block", val[0], val[1]) }
@@ -34,14 +34,14 @@ states : rxpr ';' states                            { result = States.new("STATE
 rxpr : 'return' expr                                { result = RExpr.new("RETURN", nil, val[0]) }
      | expr                                         { result = val[0] }
 
-expr :  expr OPERATOR expr                          { result = Expr.new(val[1], nil, Expr.new("NAME", val[0]), Expr.new("NAME", val[0]), val[2]) }
+expr :  expr OPERATOR expr                          { result = Expr.new(val[1], nil, val[0], val[2]) }
      | expr '+' expr                                { result = Expr.new("+", nil, val[0], val[2]) }
      | expr '-' expr                                { result = Expr.new("-", nil, val[0], val[2]) }
      | expr '*' expr                                { result = Expr.new("*", nil, val[0], val[2]) }
      | expr '/' expr                                { result = Expr.new("/", nil, val[0], val[2]) }
      | '(' expr ')'                                 { result = val[1] }
      | NAME                                         { result = Expr.new(val[0], val[0], val[0]) }
-     | NUM                                          { result = Expr.new("NUM", val[0]) }
+     | NUM                                          { result = Expr.new(val[0], val[0]) }
      | assignment                                   { result = Expr.new("ASS", nil, val[0]) }
 
 if : 'if' '(' expr ')' '{' states '}' 'else'  rxpr ';'      { result = IfNode.new("IFELSE", nil, val[2], val[5], val[8]) }
@@ -78,6 +78,9 @@ exe = Lang0.new
       puts 'Parsing error'
       puts e.message
       puts e.backtrace.inspect
+      outerr << 'Parsing error' << "\n"
+      outerr << e.message << "\n"
+      outerr << e.backtrace.inspect << "\n"
     end
 
 outa.close
