@@ -4,8 +4,8 @@ macro
     SPACE       [\ \t\n]
     COMMENT     \/\/.*
     TYPE        int
-    LIT         if|else|return|const|[;,(){}=]
-    IDCHAR      [a-z]
+    LIT         if|else|while|return|const|[;,(){}=]
+    IDCHAR      [a-zA-Z_]
     DIGIT       [0-9]
     OPERATOR    [<>=]=|[%!.|&^<>]+
 rule
