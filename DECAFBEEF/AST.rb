@@ -18,23 +18,25 @@ class AbsNode
     @attrib = a
   end
 
-  def get_ids(i = 0)
+  def get_ids(outa, outp, i = 0)
     #ret = "#{' ' * i}#{self.object_id} #{@desc}\n"
     ret = "#{@unique_id} #{@name}\n"
     @list.each do |child|
       if child == nil
         next
       elsif child.respond_to?(:get_ids)
-        child.get_ids(i + 1)
+        child.get_ids(outa, outp, i + 1)
       else
         #ret += "#{' ' * i} #{child.object_id} #{child}\n"
         #ret += "#{child.object_id} #{child.to_s}\n"
       end
     end
     puts ret
+    outa << ret
+    outp << ret
   end
   
-  def get_children()
+  def get_children(outa, outp)
     if @list.select { |x| x.respond_to?(:get_ids) }.empty?
       return
     end
@@ -44,10 +46,12 @@ class AbsNode
         next
       elsif child.respond_to?(:get_ids)
         ret += " #{child.unique_id}"
-        child.get_children()
+        child.get_children(outa, outp)
       end
     end
-    puts ret 
+    puts ret
+    outa << ret << "\n"
+    outp << ret << "\n"
   end
 
 end
