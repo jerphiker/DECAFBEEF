@@ -64,6 +64,7 @@ class Lang0WithErrors < Lang0
   def initialize
     @yydebug = true
   end
+  # https://github.com/JasonBarnabe/racc/blob/aef0fb1a9d20770bf0416286e8085c6f26fa7363/lib/racc/parser.rb#L542
   def on_error(t, val, vstack)
     errcontext = (@ss.pre_match[-10..-1] || @ss.pre_match) +
   				@ss.matched + @ss.post_match[0..9]
