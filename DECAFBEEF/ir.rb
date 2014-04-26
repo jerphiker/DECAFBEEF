@@ -1,4 +1,4 @@
-class BaseVisitor
+class BaseAcceptor
   def visit subject, outa, outp, outir
     method_name = "visit_#{subject.class}".intern
     send(method_name, subject)
@@ -27,6 +27,9 @@ class IR < BaseVisitor
   end
 
   def visit_Dec subject
+    gen_Expr subject.list[0]
+    entry = @sym.retreiveSymbol(subject.list[0].attrib)
+    @@outir << "memst R42, #{entry.counter} # #{subject.name == 'Assignment' ? '' : subject.list[1].attrib}\n"
   end
 
   def visit_DirectDec subject
@@ -39,8 +42,8 @@ class IR < BaseVisitor
     unless subject.attrib == '=' then return end
 
     gen_Expr subject.list[0]
-    entry = @sym.retreiveSymbol(subject.list[1].attrib)
-    outir << "memst R42, #{entry.counter}\n"
+    entry = @sym.retreiveSymbol(subject.list[0].attrib)
+    @@outir << "memst R42, #{entry.counter} # #{subject.list[1].attrib}\n"
   end
 
   def visit_IfNode subject
@@ -61,6 +64,13 @@ class IR < BaseVisitor
   end
 
   def visit_WhileNode subject
+    gen_Expr subject.list[0]
+    @@outir << "bfalse #{subject.list[2].unique_id}, R42\n"
+
+    gen_CmpndState subject.list[1]
+
+    gen_Expr subject.list[0]
+    @@outir << "btrue #{subject.list[1].unique_id}, R42\n"
   end
 
   def visit_StateList subject
@@ -70,6 +80,7 @@ class IR < BaseVisitor
   end
 
   def visit_Lambda subject
+    @@outir << "# Not an awful hack: #{subject.unique_id}\n"
   end
 
 
@@ -113,6 +124,7 @@ class IR < BaseVisitor
   end
 
   def gen_CmpndState subject
+    @@outir << "# #{subject.unique_id}\n"
   end
 
 end
