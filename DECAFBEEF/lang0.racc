@@ -25,7 +25,7 @@ decls : TYPE decl_list ';' decls            { result = Decls.new("Decls", val[0]
 decl_list : decl                            { result = DeclList.new("Decl List", nil, val[0])}
           | decl_list ',' decl              { result = DeclList.new("Decl List", nil, val[0], val[2])}
 
-decl : NAME                                 { result = Dec.new("Dec", val[0], DirectDec.new("NAME", val[0]))}
+decl : NAME                                 { result = Dec.new("Dec", "=", DirectDec.new("NAME", val[0]))}
      | NAME '=' expr                        { result = Dec.new("Assignment", val[1], DirectDec.new("NAME", val[0]),val[2])}
 
 statement_list : statement                  { result = StateList.new("Statement List", nil, val[0]) } 
