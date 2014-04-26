@@ -6,18 +6,19 @@ class BaseVisitor
 end
 
 class SymbolEntry < BaseVisitor
-  attr_accessor :name, :origin, :type, :const, :constness
+  attr_accessor :name, :origin, :type, :const, :constness, :counter
 
-  def initialize name, origin, type, const
+  def initialize name, origin, type, const, c
     @name = name
     @origin = origin
     @type = type
     @const = const
     @constness
+    @counter = c
   end
 
   def inspect
-    "[#{@name},#{@origin},#{@type},#{@const}]"
+    "[#{@name},#{@origin},#{@type},#{@const}, #{@counter}]"
   end 
 
 end
@@ -30,6 +31,7 @@ class SymbolTable < SymbolEntry
     @table = Array.new
     @current_scope = @table.first
     @namespace = String.new
+    @counter = 0
   end
 
   def openScope
@@ -45,9 +47,12 @@ class SymbolTable < SymbolEntry
   def enterSymbol name, a
     if !decalredLocally(name)
         if @namespace.include?(name)
-          @current_scope.push(SymbolEntry.new(name,@namespace.index(name), nil, a))
+          @counter += 1
+          @current_scope.push(SymbolEntry.new(name,@namespace.index(name), nil, a, @counter))
+          
         else
-          @current_scope.push(SymbolEntry.new(name,@namespace.length, nil, a))
+          @counter += 1
+          @current_scope.push(SymbolEntry.new(name,@namespace.length, nil, a, @counter))
           @namespace << name
         end
     else
