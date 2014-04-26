@@ -26,7 +26,7 @@ decl_list : decl                            { result = DeclList.new("Decl List",
           | decl_list ',' decl              { result = DeclList.new("Decl List", nil, val[0], val[2])}
 
 decl : NAME                                 { result = Dec.new("Dec", val[0], DirectDec.new("NAME", val[0]))}
-     | NAME '=' expr                        { result = Dec.new("Assignment", val[0], DirectDec.new("NAME", val[0]),val[2])}
+     | NAME '=' expr                        { result = Dec.new("Assignment", val[1], DirectDec.new("NAME", val[0]),val[2])}
 
 statement_list : statement                  { result = StateList.new("Statement List", nil, val[0]) } 
   | statement_list statement                { result = StateList.new("Statement List", nil, val[0], val[1]) }
