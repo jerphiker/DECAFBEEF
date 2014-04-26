@@ -147,4 +147,7 @@ class SymbolTable < SymbolEntry
     openScope
   end
 
+  def visit_Lambda subject
+  end
+
 end

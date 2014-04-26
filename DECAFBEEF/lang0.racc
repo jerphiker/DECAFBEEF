@@ -32,9 +32,9 @@ statement_list : statement                  { result = StateList.new("Statement 
   | statement_list statement                { result = StateList.new("Statement List", nil, val[0], val[1]) }
 
 statement : cmpnd_state                                { result = StateList.new("Statement List", nil, val[0]) }
-  | 'if' '(' expr ')' cmpnd_state                      { result = IfNode.new("If", nil, val[2], val[4])}
-  | 'if' '(' expr ')' cmpnd_state 'else' cmpnd_state   { result = IfNode.new("IfElse", nil, val[2], val[4], val[6])}
-  | 'while' '(' expr ')' cmpnd_state                   { result = WhileNode.new("While", nil, val[2], val[4]) }
+  | 'if' '(' expr ')' cmpnd_state                      { result = IfNode.new("If", nil, val[2], val[4], Lambda.new("Lambda", nil))}
+  | 'if' '(' expr ')' cmpnd_state 'else' cmpnd_state   { result = IfNode.new("IfElse", nil, val[2], val[4], val[6], Lambda.new("Lambda", nil))}
+  | 'while' '(' expr ')' cmpnd_state                   { result = WhileNode.new("While", nil, val[2], val[4], Lambda.new("Lambda", nil)) }
   | 'return' ';'                                       { result = Expr.new("Expr", val[0]) }
   | 'return' expr ';'                                  { result = Expr.new("Expr", val[0], val[1]) }
   | expr ';'                                           { result = Expr.new("Expr", nil, val[0]) }
@@ -129,10 +129,10 @@ exe = Lang0WithErrors.new
       ast.accept(sym, outa, outp, outir)
       ast.accept(AstVisitorPass1.new, outa, outp, outir)
       ast.accept(AstVisitorPass2.new, outa, outp, outir)
-      ast.accept(AstVisitorPassIR.new, outa, outp, outir)
+      # ast.accept(AstVisitorPassIR.new, outa, outp, outir)
       # p sym.table
       # p sym.namespace
-      ir = IR.new
+      ir = IR.new(outir, sym)
       ast.accept(ir, outa, outp, outir)
     rescue ParseError => e
       puts 'Parsing error'

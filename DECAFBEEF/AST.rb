@@ -56,6 +56,8 @@ end
 class StateList < AbsNode
 end
 
+class Lambda < AbsNode
+end
 
 class Ast < AbsNode
   attr_accessor :root
@@ -92,7 +94,8 @@ end
 class AstVisitorPass1 
 
   def visit(subject, outa, outp, outir)
-    puts "#{subject.unique_id} #{subject.name} :: #{subject.attrib}\n"
+    #if subject.name == 'Lambda' then return end
+    puts "#{subject.unique_id} #{subject.name} :: #{subject.attrib} :: #{subject.class}\n"
     outa << "#{subject.unique_id} #{subject.attrib}\n"
     outp <<  "#{subject.unique_id} #{subject.attrib}\n"
   end
@@ -102,6 +105,7 @@ end
 class AstVisitorPass2
 
   def visit(subject, outa, outp, outir)
+    #if subject.name == 'Lambda' then return end
     ret = "#{subject.unique_id}" 
     subject.list.each do |child|
       if child != nil
