@@ -92,7 +92,7 @@ end
 class AstVisitorPass1 
 
   def visit subject
-    puts "#{subject.unique_id} #{subject.name}\n"
+    puts "#{subject.unique_id} #{subject.attrib}\n"
   end
 
 end
