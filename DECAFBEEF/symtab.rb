@@ -31,7 +31,7 @@ class SymbolTable < SymbolEntry
     @table = Array.new
     @current_scope = @table.first
     @namespace = String.new
-    @counter = 0
+    @counter = 20000
   end
 
   def openScope
