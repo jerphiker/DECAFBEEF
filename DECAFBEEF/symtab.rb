@@ -6,13 +6,14 @@ class BaseVisitor
 end
 
 class SymbolEntry < BaseVisitor
-  attr_accessor :name, :origin, :type, :const
+  attr_accessor :name, :origin, :type, :const, :constness
 
   def initialize name, origin, type, const
     @name = name
     @origin = origin
     @type = type
     @const = const
+    @constness
   end
 
   def inspect
@@ -41,16 +42,16 @@ class SymbolTable < SymbolEntry
     @current_scope = @table.last
   end
 
-  def enterSymbol name
+  def enterSymbol name, a
     if !decalredLocally(name)
         if @namespace.include?(name)
-          @current_scope.push(SymbolEntry.new(name,@namespace.index(name), nil, nil))
+          @current_scope.push(SymbolEntry.new(name,@namespace.index(name), nil, a))
         else
-          @current_scope.push(SymbolEntry.new(name,@namespace.length, nil, nil))
+          @current_scope.push(SymbolEntry.new(name,@namespace.length, nil, a))
           @namespace << name
         end
     else
-      puts "Error: '" + name + "' previously declared somewhere"
+      raise ParseError.new( "Error: '" + name + "' previously declared somewhere")
     end
 
   end
@@ -59,7 +60,7 @@ class SymbolTable < SymbolEntry
     @table.reverse_each do |scope|
       scope.each do |item|
         if item.name == name
-          return true
+          return item
         end
       end
     end
@@ -80,6 +81,12 @@ class SymbolTable < SymbolEntry
   end
 
   def visit_Decls subject
+    if subject.attrib == "const"
+      @constness = "const"
+    else
+      @constness = nil
+    end
+
   end
 
   def visit_DeclList subject
@@ -92,10 +99,15 @@ class SymbolTable < SymbolEntry
     # This makes an assumption  based on the grammar that in the constructed AST
     #  the first child(leaf) node will be the name of the declaration
     # p subject.list
-    enterSymbol subject.list.first.attrib
+    if @constness == "const"
+      subject.attrib = "const"
+    end
+    enterSymbol subject.list.first.attrib, subject.attrib
+
   end
 
   def visit_DirectDec subject
+
   end
 
   def visit_RExpr subject
@@ -104,8 +116,18 @@ class SymbolTable < SymbolEntry
   def visit_Expr subject
     if subject.name == "NAME"
       if retreiveSymbol(subject.attrib) == false
-        puts "Error: '" + subject.attrib + "' undeclared (First use in this function)"
+        raise ParseError.new( "Error: '" + subject.list.first.attrib + "' undeclared (First use in this function)")
       end
+
+    end
+    if subject.attrib == "="
+        if retreiveSymbol(subject.list.first.attrib) == false
+          puts "Error: '" + subject.list.first.attrib + "' undeclared (First use in this function)"
+        elsif retreiveSymbol(subject.list.first.attrib).const == "const"
+          raise ParseError.new("Error: Assignment of readonly variable " + subject.list.first.attrib)
+
+        end
+
     end
   end
 

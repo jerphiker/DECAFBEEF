@@ -2,7 +2,7 @@
 int x, y = 3, z = x;     
 const int A = 42;     
 int B = 0;
-
+A = 42;
 {
 	int B = 2;
 	int y = -1;

@@ -19,14 +19,14 @@ s : decls                                   { result = Root.new("Start", nil, va
   | decls statement_list decls              { result = Root.new("Start", nil, val[0], val[1], val[2]) }
 
 decls : TYPE decl_list ';' decls            { result = Decls.new("Decls", val[0], val[1], val[3])}
-      | "const" TYPE decl_list ';' decls    { result = Decls.new("Decls", val[1], val[2], val[4])}
+      | "const" TYPE decl_list ';' decls    { result = Decls.new("Decls", val[0], val[2], val[4])}
       |
 
 decl_list : decl                            { result = DeclList.new("Decl List", nil, val[0])}
           | decl_list ',' decl              { result = DeclList.new("Decl List", nil, val[0], val[2])}
 
-decl : NAME                                 { result = Dec.new("Dec", "=", DirectDec.new("NAME", val[0]))}
-     | NAME '=' expr                        { result = Dec.new("Assignment", val[1], DirectDec.new("NAME", val[0]),val[2])}
+decl : NAME                                 { result = Dec.new("Assignment", nil, DirectDec.new("NAME", val[0]))}
+     | NAME '=' expr                        { result = Dec.new("=", nil, DirectDec.new("NAME", val[0]),val[2])}
 
 statement_list : statement                  { result = StateList.new("Statement List", nil, val[0]) } 
   | statement_list statement                { result = StateList.new("Statement List", nil, val[0], val[1]) }
@@ -128,15 +128,17 @@ exe = Lang0WithErrors.new
       ast.accept(sym)
       ast.accept(AstVisitorPass1.new)
       ast.accept(AstVisitorPass2.new)
-      # p sym.table
-      # p sym.namespace
+      p sym.table
+      p sym.namespace
     rescue ParseError => e
       puts 'Parsing error'
       puts e.message
+      puts "\nStack Trace"
       puts e.backtrace.inspect
       outerr << 'Parsing error' << "\n"
       outerr << e.message << "\n"
       outerr << e.backtrace.inspect << "\n"
+      raise SystemExit.new(1)
     end
 
 outa.close
