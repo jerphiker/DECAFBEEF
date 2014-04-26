@@ -1,17 +1,22 @@
+class BaseVisitor
+  def visit subject
+    method_name = "visit_#{subject.class}".intern
+    send(method_name, subject )
+  end
+end
 
 class SymbolEntry < BaseVisitor
-  attr_accessor :name, :origin, :length, :type, :const
+  attr_accessor :name, :origin, :type, :const
 
-  def initialize name, origin, length, type, const
+  def initialize name, origin, type, const
     @name = name
     @origin = origin
-    @length = length
     @type = type
     @const = const
   end
 
   def inspect
-    "[#{@name},#{@origin},#{@length},#{@type},#{@const}]"
+    "[#{@name},#{@origin},#{@type},#{@const}]"
   end 
 
 end
@@ -37,15 +42,15 @@ class SymbolTable < SymbolEntry
   end
 
   def enterSymbol name
-    if !retreiveSymbol(name)
-      if name.class != Expr
+    if !decalredLocally(name)
         if @namespace.include?(name)
-          @current_scope.push(SymbolEntry.new(name,@namespace.index(name),name.length, false, false))
+          @current_scope.push(SymbolEntry.new(name,@namespace.index(name), nil, nil))
         else
+          @current_scope.push(SymbolEntry.new(name,@namespace.length, nil, nil))
           @namespace << name
-          @current_scope.push(SymbolEntry.new(name,@namespace.index(name),name.length, false, false))
         end
-      end
+    else
+      puts "Error: '" + name + "' previously declared somewhere"
     end
 
   end
@@ -74,33 +79,50 @@ class SymbolTable < SymbolEntry
     openScope
   end
 
-  def visit_Decs subject
+  def visit_Decls subject
   end
 
-  def visit_DecBody subject
+  def visit_DeclList subject
   end
 
   def visit_States subject
   end
 
-  def visit_Assign subject
+  def visit_Dec subject
+    # This makes an assumption  based on the grammar that in the constructed AST
+    #  the first child(leaf) node will be the name of the declaration
+    # p subject.list
+    enterSymbol subject.list.first.attrib
+  end
+
+  def visit_DirectDec subject
   end
 
   def visit_RExpr subject
   end
 
   def visit_Expr subject
-    # puts "#{subject.name} #{subject.attrib}"
     if subject.name == "NAME"
-      enterSymbol subject.attrib
+      if retreiveSymbol(subject.attrib) == false
+        puts "Error: '" + subject.attrib + "' undeclared (First use in this function)"
+      end
     end
   end
 
   def visit_IfNode subject
-    openScope
   end
 
   def visit_AbsNode subject
+  end
+
+  def visit_WhileNode subject
+  end
+
+  def visit_StateList subject
+  end
+
+  def visit_CmpndState subject
+    openScope
   end
 
 end

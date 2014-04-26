@@ -18,57 +18,24 @@ class AbsNode
     @attrib = a
   end
 
-  def get_ids(outa, outp, i = 0)
-    #ret = "#{' ' * i}#{self.object_id} #{@desc}\n"
-    ret = "#{@unique_id} #{@name}\n"
-    @list.each do |child|
-      if child == nil
-        next
-      elsif child.respond_to?(:get_ids)
-        child.get_ids(outa, outp, i + 1)
-      else
-        #ret += "#{' ' * i} #{child.object_id} #{child}\n"
-        #ret += "#{child.object_id} #{child.to_s}\n"
-      end
-    end
-    puts ret
-    outa << ret
-    outp << ret
-  end
-  
-  def get_children(outa, outp)
-    if @list.select { |x| x.respond_to?(:get_ids) }.empty?
-      return
-    end
-    ret = "#{@unique_id}" 
-    @list.each do |child|
-      if child == nil
-        next
-      elsif child.respond_to?(:get_ids)
-        ret += " #{child.unique_id}"
-        child.get_children(outa, outp)
-      end
-    end
-    puts ret
-    outa << ret << "\n"
-    outp << ret << "\n"
-  end
-
 end
 
 class Root < AbsNode
 end
 
-class Decs < AbsNode
+class Decls < AbsNode
 end
 
-class DecBody < AbsNode
+class DeclList < AbsNode
 end
 
 class States < AbsNode
 end
 
-class Assign < AbsNode
+class Dec < AbsNode
+end
+
+class DirectDec < AbsNode
 end
 
 class RExpr < AbsNode
@@ -80,6 +47,16 @@ end
 class IfNode < AbsNode
 end
 
+class WhileNode < AbsNode
+end
+
+class CmpndState < AbsNode
+end
+
+class StateList < AbsNode
+end
+
+
 class Ast < AbsNode
   attr_accessor :root
 
@@ -90,8 +67,10 @@ class Ast < AbsNode
   def accept visitor
     @root.accept visitor
     @root.list.each do |node|
-      node.accept visitor 
-      iterate(node, visitor)
+      if node != nil
+        node.accept visitor 
+        iterate(node, visitor)
+      end
     end
   end
 
@@ -101,8 +80,8 @@ class Ast < AbsNode
         next_node.accept visitor
         iterate(next_node, visitor)
       else
-       next_node = AbsNode.new(next_node, nil)
-       next_node.accept visitor
+       # next_node = AbsNode.new(next_node, nil)
+       # next_node.accept visitor
       end
     end
 
@@ -110,9 +89,24 @@ class Ast < AbsNode
   end
 end
 
-class BaseVisitor
+class AstVisitorPass1 
+
   def visit subject
-    method_name = "visit_#{subject.class}".intern
-    send(method_name, subject )
+    puts "#{subject.unique_id} #{subject.name}\n"
   end
+
+end
+
+class AstVisitorPass2
+
+  def visit subject
+    ret = "#{subject.unique_id}" 
+    subject.list.each do |child|
+      if child != nil
+        ret += " #{child.unique_id}"
+      end
+    end
+    puts ret
+  end
+
 end

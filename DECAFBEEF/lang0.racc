@@ -15,40 +15,80 @@ preclow
 start s
 rule
 
-s : decs states                                     { result = Root.new("S", nil, val[0], val[1]) }
+s : decls                                   { result = Root.new("Start", nil, val[0]) }
+  | decls statement_list decls              { result = Root.new("Start", nil, val[0], val[1], val[2]) }
 
-decs : TYPE decbody ';' decs                        { result = Decs.new("DEC", val[0], val[0], val[1], val[3]) }
-    | 'const' TYPE decbody ';' decs                 { result = Decs.new("CONSTDEC", val[1], val[1], val[2], val[4]) }
-    |                                               {result = nil}
+decls : TYPE decl_list ';' decls            { result = Decls.new("Decls", val[0], val[1], val[3])}
+      | "const" TYPE decl_list ';' decls    { result = Decls.new("Decls", val[1], val[2], val[4])}
+      |
 
-decbody : NAME ',' decbody                          { result = DecBody.new("DECBODY", nil, Expr.new(val[0], val[0]), val[2]) }
-    | assignment ',' decbody                        { result = DecBody.new("DECBODY", nil, Expr.new("ASS", nil, val[0]), val[2]) }
-    | NAME                                          { result = Expr.new(val[0], val[0]) }
-	| assignment                                    { result = Expr.new("ASS", nil, val[0]) }
+decl_list : decl                            { result = DeclList.new("Decl List", nil, val[0])}
+          | decl_list ',' decl              { result = DeclList.new("Decl List", nil, val[0], val[2])}
 
-assignment : NAME '=' expr                          { result = Assign.new("=", nil, Expr.new(val[0], val[0]), val[2]) }
+decl : NAME                                 { result = Dec.new("Dec", val[0], DirectDec.new("NAME", val[0]))}
+     | NAME '=' expr                        { result = Dec.new("Assignment", val[0], DirectDec.new("NAME", val[0]),val[2])}
 
-states : rxpr ';' states                            { result = States.new("STATES", nil, val[0], val[2]) }
-      | if states                                   { result = States.new("STATES", "block", val[0], val[1]) }
-      |                                             {}
+statement_list : statement                  { result = StateList.new("Statement List", nil, val[0]) } 
+  | statement_list statement                { result = StateList.new("Statement List", nil, val[0], val[1]) }
 
-rxpr : 'return' expr                                { result = RExpr.new("RETURN", nil, val[0]) }
-     | expr                                         { result = val[0] }
+statement : cmpnd_state                                { result = StateList.new("Statement List", nil, val[0]) }
+  | 'if' '(' expr ')' cmpnd_state                      { result = IfNode.new("If", nil, val[2], val[4])}
+  | 'if' '(' expr ')' cmpnd_state 'else' cmpnd_state   { result = IfNode.new("IfElse", nil, val[2], val[4], val[6])}
+  | 'while' '(' expr ')' cmpnd_state                   { result = WhileNode.new("While", nil, val[2], val[4]) }
+  | 'return' ';'                                       { result = Expr.new("Expr", val[0]) }
+  | 'return' expr ';'                                  { result = Expr.new("Expr", val[0], val[1]) }
+  | expr ';'                                           { result = Expr.new("Expr", nil, val[0]) }
 
-expr :  expr OPERATOR expr                          { result = Expr.new(val[1], nil, val[0], val[2]) }
-     | expr '+' expr                                { result = Expr.new("+", nil, val[0], val[2]) }
-     | expr '-' expr                                { result = Expr.new("-", nil, val[0], val[2]) }
-     | expr '*' expr                                { result = Expr.new("*", nil, val[0], val[2]) }
-     | expr '/' expr                                { result = Expr.new("/", nil, val[0], val[2]) }
-     | '(' expr ')'                                 { result = val[1] }
-     | NAME                                         { result = Expr.new(val[0], val[0], val[0]) }
-     | NUM                                          { result = Expr.new(val[0], val[0]) }
-     | assignment                                   { result = Expr.new("ASS", nil, val[0]) }
+cmpnd_state : '{' decls '}'                            { result = CmpndState.new("Compound Statements", nil, val[1]) }
+  | '{' decls statement_list '}'                       { result = CmpndState.new("Compound Statements", nil, val[1], val[2]) }
 
-if : 'if' '(' expr ')' '{' states '}' 'else'  rxpr ';'      { result = IfNode.new("IFELSE", nil, val[2], val[5], val[8]) }
-   | 'if' '(' expr ')' '{' states '}' 'else'  if            { result = IfNode.new("IFELSE", nil, val[2], val[5], val[8]) }
-   | 'if' '(' expr ')' '{' states '}' 'else' '{' states '}' { result = IfNode.new("IFELSE", nil, val[2], val[5], val[9]) }
-   | 'if' '(' expr ')' '{' states '}'                       { result = IfNode.new("IF", nil, val[2], val[5]) }
+
+expr :  expr OPERATOR expr                  { result = Expr.new("Operator", val[1], val[0], val[2]) }
+     | expr '=' expr                        { result = Expr.new("Operator", val[1], val[0], val[2]) }
+     | expr '+' expr                        { result = Expr.new("Operator", val[1], val[0], val[2]) }
+     | expr '-' expr                        { result = Expr.new("Operator", val[1], val[0], val[2]) }
+     | expr '*' expr                        { result = Expr.new("Operator", val[1], val[0], val[2]) }
+     | expr '/' expr                        { result = Expr.new("Operator", val[1], val[0], val[2]) }
+     | '(' expr ')'                         { result = val[1] }
+     | NAME                                 { result = Expr.new("NAME", val[0]) }
+     | NUM                                  { result = Expr.new("NUM", val[0]) }
+
+
+
+# s : decs states                                     { result = Root.new("S", nil, val[0], val[1]) }
+
+# decs : TYPE decbody ';' decs                        { result = Decs.new("DEC", val[0], val[0], val[1], val[3]) }
+#     | 'const' TYPE decbody ';' decs                 { result = Decs.new("CONSTDEC", val[1], val[1], val[2], val[4]) }
+#     |                                               {result = nil}
+
+# decbody : NAME ',' decbody                          { result = DecBody.new("DECBODY", nil, Expr.new(val[0], val[0]), val[2]) }
+#     | assignment ',' decbody                        { result = DecBody.new("DECBODY", nil, Expr.new("ASS", nil, val[0]), val[2]) }
+#     | NAME                                          { result = Expr.new(val[0], val[0]) }
+# 	| assignment                                    { result = Expr.new("ASS", nil, val[0]) }
+
+# assignment : NAME '=' expr                          { result = Assign.new("=", nil, Expr.new(val[0], val[0]), val[2]) }
+
+# states : rxpr ';' states                            { result = States.new("STATES", nil, val[0], val[2]) }
+#       | if states                                   { result = States.new("STATES", "block", val[0], val[1]) }
+#       |                                             {}
+
+# rxpr : 'return' expr                                { result = RExpr.new("RETURN", nil, val[0]) }
+#      | expr                                         { result = val[0] }
+
+# expr :  expr OPERATOR expr                          { result = Expr.new(val[1], nil, val[0], val[2]) }
+#      | expr '+' expr                                { result = Expr.new("+", nil, val[0], val[2]) }
+#      | expr '-' expr                                { result = Expr.new("-", nil, val[0], val[2]) }
+#      | expr '*' expr                                { result = Expr.new("*", nil, val[0], val[2]) }
+#      | expr '/' expr                                { result = Expr.new("/", nil, val[0], val[2]) }
+#      | '(' expr ')'                                 { result = val[1] }
+#      | NAME                                         { result = Expr.new(val[0], val[0], val[0]) }
+#      | NUM                                          { result = Expr.new(val[0], val[0]) }
+#      | assignment                                   { result = Expr.new("ASS", nil, val[0]) }
+
+# if : 'if' '(' expr ')' '{' states '}' 'else'  rxpr ';'      { result = IfNode.new("IFELSE", nil, val[2], val[5], val[8]) }
+#    | 'if' '(' expr ')' '{' states '}' 'else'  if            { result = IfNode.new("IFELSE", nil, val[2], val[5], val[8]) }
+#    | 'if' '(' expr ')' '{' states '}' 'else' '{' states '}' { result = IfNode.new("IFELSE", nil, val[2], val[5], val[9]) }
+#    | 'if' '(' expr ')' '{' states '}'                       { result = IfNode.new("IF", nil, val[2], val[5]) }
 
 end
 
@@ -86,10 +126,10 @@ exe = Lang0WithErrors.new
       # root = exe.scan_str($stdin.read)
       sym = SymbolTable.new
       ast.accept(sym)
+      ast.accept(AstVisitorPass1.new)
+      ast.accept(AstVisitorPass2.new)
       # p sym.table
       # p sym.namespace
-      ast.root.get_ids(outa, outp)
-      ast.root.get_children(outa, outp)
     rescue ParseError => e
       puts 'Parsing error'
       puts e.message
@@ -104,22 +144,38 @@ outp.close
 outerr.close
 outir.close
 
-# str = gets
-# while str do
-#   puts "Inputed string = #{str}"
+# statement
+#   | compound_statement
+#   | IF '(' expression ')' statement
+#   | IF '(' expression ')' statement ELSE statement
+#   | WHILE '(' expression ')' statement
+#   | RETURN ';'
+#   | RETURN expression ';'
+#   | expression ';'
+#   | ';'
+#   ;
 
-#   if str != nil
-#     begin
-#       exe.scan_str(str)
-#     rescue ParseError => e
-#       puts 'Parsing error'
-#       puts e.message
-#       puts e.backtrace.inspect
-#     end
+# expression
+#   : assignment_expression
+#   | expression ',' assignment_expression
+#   ;
 
-#     puts
-#   end
-#   str = gets
-# end
+# compound_statement
+#   : '{' '}'
+#   | '{' statement_list '}'
+#   | '{' declaration_list '}'
+#   | '{' declaration_list statement_list '}'
+#   ;
 
-# vim:ft=racc:
+# declaration_list
+#   : declaration
+#   | declaration_list declaration
+#   ;
+
+# statement_list
+#   : statement
+#   | statement_list statement
+#   ;
+
+
+

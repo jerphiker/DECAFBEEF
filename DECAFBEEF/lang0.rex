@@ -6,7 +6,7 @@ macro
     TYPE        int
     LIT         if|else|while|return|const|[;,(){}=]
     IDCHAR      [a-zA-Z_]
-    DIGIT       [0-9]
+    DIGIT       \d+|[-]\d+
     OPERATOR    [<>=]=|[%!.|&^<>]+
 rule
     {SPACE}+        { }
