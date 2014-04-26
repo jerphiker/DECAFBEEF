@@ -1,5 +1,5 @@
 class BaseVisitor
-  def visit subject
+  def visit subject, outa, outp, outir
     method_name = "visit_#{subject.class}".intern
     send(method_name, subject )
   end

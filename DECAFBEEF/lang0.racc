@@ -118,18 +118,19 @@ end
 outa = File.open("OUTPUT.a", "w")
 outp = File.open("OUTPUT.p", "w")
 outerr = File.open("OUTPUT.err", "w")
-outir = File.open("OUTPUT.err", "w")
+outir = File.open("OUTPUT.ir", "w")
 
 exe = Lang0WithErrors.new
     begin
       ast = Ast.new(exe.scan_str($stdin.read))
       # root = exe.scan_str($stdin.read)
       sym = SymbolTable.new
-      ast.accept(sym)
-      ast.accept(AstVisitorPass1.new)
-      ast.accept(AstVisitorPass2.new)
-      p sym.table
-      p sym.namespace
+      ast.accept(sym, outa, outp, outir)
+      ast.accept(AstVisitorPass1.new, outa, outp, outir)
+      ast.accept(AstVisitorPass2.new, outa, outp, outir)
+      ast.accept(AstVisitorPassIR.new, outa, outp, outir)
+      # p sym.table
+      # p sym.namespace
     rescue ParseError => e
       puts 'Parsing error'
       puts e.message
