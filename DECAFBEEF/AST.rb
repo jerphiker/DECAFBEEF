@@ -1,8 +1,8 @@
 require 'securerandom'
 
 module Visitable
-  def accept visitor
-    visitor.visit(self)
+  def accept(visitor, outa, outp, outir)
+    visitor.visit(self, outa, outp, outir)
   end
 end
 
@@ -64,21 +64,21 @@ class Ast < AbsNode
     @root = r
   end
 
-  def accept visitor
-    @root.accept visitor
+  def accept(visitor, outa, outp, outir)
+    @root.accept(visitor, outa, outp, outir)
     @root.list.each do |node|
       if node != nil
-        node.accept visitor 
-        iterate(node, visitor)
+        node.accept(visitor, outa, outp, outir)
+        iterate(node, visitor, outa, outp, outir)
       end
     end
   end
 
-  def iterate(node, visitor)
+  def iterate(node, visitor, outa, outp, outir)
     node.list.each do |next_node|
       if next_node.respond_to?(:accept)
-        next_node.accept visitor
-        iterate(next_node, visitor)
+        next_node.accept(visitor, outa, outp, outir)
+        iterate(next_node, visitor, outa, outp, outir)
       else
        # next_node = AbsNode.new(next_node, nil)
        # next_node.accept visitor
@@ -91,15 +91,17 @@ end
 
 class AstVisitorPass1 
 
-  def visit subject
+  def visit(subject, outa, outp, outir)
     puts "#{subject.unique_id} #{subject.attrib}\n"
+    outa << "#{subject.unique_id} #{subject.attrib}\n"
+    outp <<  "#{subject.unique_id} #{subject.attrib}\n"
   end
 
 end
 
 class AstVisitorPass2
 
-  def visit subject
+  def visit(subject, outa, outp, outir)
     ret = "#{subject.unique_id}" 
     subject.list.each do |child|
       if child != nil
@@ -107,6 +109,14 @@ class AstVisitorPass2
       end
     end
     puts ret
+    outa << ret << "\n"
+    outp << ret << "\n"
   end
 
+end
+
+class AstVisitorPassIR
+  def visit(subject, outa, outp, outir)
+    outir << "#{subject.attrib}\n"
+  end
 end
