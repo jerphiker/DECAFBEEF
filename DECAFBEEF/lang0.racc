@@ -97,6 +97,7 @@ end
 require "./AST.rb"
 require "./lang0.rex"
 require "./symtab.rb"
+require "./ir.rb"
 
 ---- footer ----
 
@@ -131,6 +132,8 @@ exe = Lang0WithErrors.new
       ast.accept(AstVisitorPassIR.new, outa, outp, outir)
       # p sym.table
       # p sym.namespace
+      ir = IR.new
+      ast.accept(ir, outa, outp, outir)
     rescue ParseError => e
       puts 'Parsing error'
       puts e.message
