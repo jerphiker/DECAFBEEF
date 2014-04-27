@@ -42,11 +42,11 @@ class SymbolTable < SymbolEntry
   def enterSymbol name, a
     if !decalredLocally(name)
         if @namespace.include?(name)
-          @counter += 1
+          @counter += 4
           @current_scope.push(SymbolEntry.new(name,@namespace.index(name), nil, a, @counter))
           
         else
-          @counter += 1
+          @counter += 4
           @current_scope.push(SymbolEntry.new(name,@namespace.length, nil, a, @counter))
           @namespace << name
         end
