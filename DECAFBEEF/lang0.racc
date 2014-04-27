@@ -128,8 +128,8 @@ exe = Lang0WithErrors.new
       ast = Ast.new(exe.scan_str($stdin.read))
       sym = SymbolTable.new
       ast.accept(sym, outa, outp, outir)
-      # ast.accept(AstVisitorPass1.new, outa, outp, outir)
-      # ast.accept(AstVisitorPass2.new, outa, outp, outir)
+      ast.accept(AstVisitorPass1.new, outa, outp, outir)
+      ast.accept(AstVisitorPass2.new, outa, outp, outir)
       # p sym.table
       # p sym.namespace
       ir = IRPass1.new(outa, outp, outir, sym, ast, 0)
@@ -138,8 +138,8 @@ exe = Lang0WithErrors.new
       ast.accept(ir2, outa, outp, outir)
       ir3 = IRPass3.new(outa, outp, outir, sym, ast, ir2.expr_counter)
       ast.accept(ir3, outa, outp, outir)
-      ast.accept(AstVisitorPass1.new, outa, outp, outir)
-      ast.accept(AstVisitorPass2.new, outa, outp, outir)
+      #ast.accept(AstVisitorPass1.new, outa, outp, outir)
+      #ast.accept(AstVisitorPass2.new, outa, outp, outir)
     rescue ParseError => e
       puts 'Parsing error'
       puts e.message
