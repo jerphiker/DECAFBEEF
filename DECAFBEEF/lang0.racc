@@ -54,43 +54,6 @@ expr :  expr OPERATOR expr                  { result = Expr.new("Operator", val[
      | NAME                                 { result = Literal.new("NAME", val[0]) }
      | NUM                                  { result = Literal.new("NUM", val[0]) }
 
-
-
-# s : decs states                                     { result = Root.new("S", nil, val[0], val[1]) }
-
-# decs : TYPE decbody ';' decs                        { result = Decs.new("DEC", val[0], val[0], val[1], val[3]) }
-#     | 'const' TYPE decbody ';' decs                 { result = Decs.new("CONSTDEC", val[1], val[1], val[2], val[4]) }
-#     |                                               {result = nil}
-
-# decbody : NAME ',' decbody                          { result = DecBody.new("DECBODY", nil, Expr.new(val[0], val[0]), val[2]) }
-#     | assignment ',' decbody                        { result = DecBody.new("DECBODY", nil, Expr.new("ASS", nil, val[0]), val[2]) }
-#     | NAME                                          { result = Expr.new(val[0], val[0]) }
-# 	| assignment                                    { result = Expr.new("ASS", nil, val[0]) }
-
-# assignment : NAME '=' expr                          { result = Assign.new("=", nil, Expr.new(val[0], val[0]), val[2]) }
-
-# states : rxpr ';' states                            { result = States.new("STATES", nil, val[0], val[2]) }
-#       | if states                                   { result = States.new("STATES", "block", val[0], val[1]) }
-#       |                                             {}
-
-# rxpr : 'return' expr                                { result = RExpr.new("RETURN", nil, val[0]) }
-#      | expr                                         { result = val[0] }
-
-# expr :  expr OPERATOR expr                          { result = Expr.new(val[1], nil, val[0], val[2]) }
-#      | expr '+' expr                                { result = Expr.new("+", nil, val[0], val[2]) }
-#      | expr '-' expr                                { result = Expr.new("-", nil, val[0], val[2]) }
-#      | expr '*' expr                                { result = Expr.new("*", nil, val[0], val[2]) }
-#      | expr '/' expr                                { result = Expr.new("/", nil, val[0], val[2]) }
-#      | '(' expr ')'                                 { result = val[1] }
-#      | NAME                                         { result = Expr.new(val[0], val[0], val[0]) }
-#      | NUM                                          { result = Expr.new(val[0], val[0]) }
-#      | assignment                                   { result = Expr.new("ASS", nil, val[0]) }
-
-# if : 'if' '(' expr ')' '{' states '}' 'else'  rxpr ';'      { result = IfNode.new("IFELSE", nil, val[2], val[5], val[8]) }
-#    | 'if' '(' expr ')' '{' states '}' 'else'  if            { result = IfNode.new("IFELSE", nil, val[2], val[5], val[8]) }
-#    | 'if' '(' expr ')' '{' states '}' 'else' '{' states '}' { result = IfNode.new("IFELSE", nil, val[2], val[5], val[9]) }
-#    | 'if' '(' expr ')' '{' states '}'                       { result = IfNode.new("IF", nil, val[2], val[5]) }
-
 end
 
 ---- header ----
@@ -99,7 +62,6 @@ require "./AST.rb"
 require "./lang0.rex"
 require "./symtab.rb"
 require "./ir.rb"
-require "./ArithmeticVisitor.rb"
 
 ---- footer ----
 
@@ -148,10 +110,6 @@ exe = Lang0WithErrors.new
       #ast.accept(AstVisitorPass1.new, outa, outp, outir)
       #ast.accept(AstVisitorPass2.new, outa, outp, outir)
     rescue ParseError => e
-      #puts 'Parsing error'
-      #puts e.message
-      #puts "\nStack Trace"
-      #puts e.backtrace.inspect
       outerr << 'Parsing error' << "\n"
       outerr << e.message << "\n"
       outerr << e.backtrace.inspect << "\n"
@@ -162,39 +120,4 @@ outa.close
 outp.close
 outerr.close
 outir.close
-
-# statement
-#   | compound_statement
-#   | IF '(' expression ')' statement
-#   | IF '(' expression ')' statement ELSE statement
-#   | WHILE '(' expression ')' statement
-#   | RETURN ';'
-#   | RETURN expression ';'
-#   | expression ';'
-#   | ';'
-#   ;
-
-# expression
-#   : assignment_expression
-#   | expression ',' assignment_expression
-#   ;
-
-# compound_statement
-#   : '{' '}'
-#   | '{' statement_list '}'
-#   | '{' declaration_list '}'
-#   | '{' declaration_list statement_list '}'
-#   ;
-
-# declaration_list
-#   : declaration
-#   | declaration_list declaration
-#   ;
-
-# statement_list
-#   : statement
-#   | statement_list statement
-#   ;
-
-
 
