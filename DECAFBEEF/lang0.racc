@@ -118,10 +118,17 @@ class Lang0WithErrors < Lang0
   end
 end
 
-outa = File.open("OUTPUT.a", "w")
-outp = File.open("OUTPUT.p", "w")
-outerr = File.open("OUTPUT.err", "w")
-outir = File.open("OUTPUT.ir", "w")
+outname = "OUTPUT"
+unless ARGV.length == 0
+  outname = ARGV[0]
+end
+
+#puts outname
+
+outa = File.open(outname + ".a", "w")
+outp = File.open(outname + ".p", "w")
+outerr = File.open(outname + ".err", "w")
+outir = File.open(outname + ".ir", "w")
 
 exe = Lang0WithErrors.new
     begin
@@ -141,10 +148,10 @@ exe = Lang0WithErrors.new
       #ast.accept(AstVisitorPass1.new, outa, outp, outir)
       #ast.accept(AstVisitorPass2.new, outa, outp, outir)
     rescue ParseError => e
-      puts 'Parsing error'
-      puts e.message
-      puts "\nStack Trace"
-      puts e.backtrace.inspect
+      #puts 'Parsing error'
+      #puts e.message
+      #puts "\nStack Trace"
+      #puts e.backtrace.inspect
       outerr << 'Parsing error' << "\n"
       outerr << e.message << "\n"
       outerr << e.backtrace.inspect << "\n"

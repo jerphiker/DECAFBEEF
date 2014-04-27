@@ -99,7 +99,7 @@ class AstVisitorPass1
 
   def visit(subject, outa, outp, outir)
     #if subject.name == 'Lambda' then return end
-    puts "#{subject.unique_id} #{subject.name} :: #{subject.attrib} :: #{subject.class} :: #{subject.ir}"
+    #puts "#{subject.unique_id} #{subject.name} :: #{subject.attrib} :: #{subject.class} :: #{subject.ir}"
     outa << "#{subject.unique_id} #{subject.attrib}\n"
     outp <<  "#{subject.unique_id} #{subject.attrib}\n"
   end
@@ -116,7 +116,7 @@ class AstVisitorPass2
         ret += " #{child.unique_id}"
       end
     end
-    puts ret
+    #puts ret
     outa << ret << "\n"
     outp << ret << "\n"
   end
