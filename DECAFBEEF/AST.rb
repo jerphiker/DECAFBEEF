@@ -7,7 +7,7 @@ module Visitable
 end
 
 class AbsNode
-  attr_accessor :list, :name, :unique_id, :attrib
+  attr_accessor :list, :name, :unique_id, :attrib, :ir
 
   include Visitable
 
@@ -16,6 +16,7 @@ class AbsNode
     @name = desc
     @unique_id = SecureRandom.uuid
     @attrib = a
+    @ir = String.new
   end
 
 end
@@ -59,6 +60,9 @@ end
 class Lambda < AbsNode
 end
 
+class Literal < AbsNode
+end
+
 class Ast < AbsNode
   attr_accessor :root
 
@@ -95,7 +99,7 @@ class AstVisitorPass1
 
   def visit(subject, outa, outp, outir)
     #if subject.name == 'Lambda' then return end
-    puts "#{subject.unique_id} #{subject.name} :: #{subject.attrib} :: #{subject.class}\n"
+    puts "#{subject.unique_id} #{subject.name} :: #{subject.attrib} :: #{subject.class} :: #{subject.ir}"
     outa << "#{subject.unique_id} #{subject.attrib}\n"
     outp <<  "#{subject.unique_id} #{subject.attrib}\n"
   end
@@ -119,43 +123,9 @@ class AstVisitorPass2
 
 end
 
-class AstVisitorPassIR
-  @@visited = []
-  def visit(subject, outa, outp, outir)
-    if @@visited.include? subject
-      return
-    end
-    @@visited << subject
-    case subject.name
-    when "Assignment"
-      subject.list.each do |node|
-        outir << "Assignment: #{node.attrib}\n"
-        @@visited << node
-      end
-    when "="
-      first = true
-      subject.list.each do |node|
-        if first
-          outir << " Set #{node.attrib} = "
-          @@visited << node
-          first = false
-        else
-          self.visit(node, outa, outp, outir)
-          outir << " IN EXPR "
-        end
-      end
-      outir << "\n"
-    when "Operator"
-      outir << " #{subject.attrib} "
-    when "NAME"
-      outir << " #{subject.attrib}"
-    when "NUM"
-      outir << " #{subject.attrib}"
-    when "Start", "Decl List", "Decls", "Statement List", "Compound Statements"
-      outir << "IGNORE\n"
-    else
-      outir << "No condition met: #{subject.name}\n"
-    end
-    
+class BaseVisitor
+  def visit subject, outa, outp, outir
+    method_name = "visit_#{subject.class}".intern
+    send(method_name, subject)
   end
 end

@@ -1,9 +1,4 @@
-class BaseVisitor
-  def visit subject, outa, outp, outir
-    method_name = "visit_#{subject.class}".intern
-    send(method_name, subject )
-  end
-end
+
 
 class SymbolEntry < BaseVisitor
   attr_accessor :name, :origin, :type, :const, :constness, :counter
@@ -153,6 +148,17 @@ class SymbolTable < SymbolEntry
   end
 
   def visit_Lambda subject
+  end
+
+  def visit_Literal subject
+
+    if subject.name == "NAME"
+      if retreiveSymbol(subject.attrib) == false
+        raise ParseError.new( "Error: '" + subject.list.first.attrib + "' undeclared (First use in this function)")
+      end
+
+    end
+    
   end
 
 end

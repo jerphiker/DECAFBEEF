@@ -1,130 +1,215 @@
-class BaseAcceptor
+
+class IRPass1 
+  attr_accessor :expr_counter
+
+  def initialize outa, outp, outir, sym, ast, expr_counter
+    @sym = sym
+    @@outa = outa
+    @@outp = outp
+    @@outir = outir
+    @ast = ast
+
+    @expr_counter = expr_counter
+  end
+
   def visit subject, outa, outp, outir
     method_name = "visit_#{subject.class}".intern
-    send(method_name, subject)
-  end
-end
-
-
-class IR < BaseVisitor
-
-  def initialize outir, sym
-    @sym = sym
-    @@outir = outir
-    @expr_counter = 0
-  end
-
-  def visit_Root subject
-  end
-
-  def visit_Decls subject
-  end
-
-  def visit_DeclList subject
-  end
-
-  def visit_States subject
-  end
-
-  def visit_Dec subject
-    gen_Expr subject.list[0]
-    entry = @sym.retreiveSymbol(subject.list[0].attrib)
-    @@outir << "memst R42, #{entry.counter} # #{subject.name == 'Assignment' ? '' : subject.list[1].attrib}\n"
-  end
-
-  def visit_DirectDec subject
-  end
-
-  def visit_RExpr subject
-  end
-
-  def visit_Expr subject
-    unless subject.attrib == '=' then return end
-
-    gen_Expr subject.list[0]
-    entry = @sym.retreiveSymbol(subject.list[0].attrib)
-    @@outir << "memst R42, #{entry.counter} # #{subject.list[1].attrib}\n"
-  end
-
-  def visit_IfNode subject
-    gen_Expr subject.list[0]
-
-    if subject.name == "IfElse"
-      @@outir << "bfalse #{subject.list[2].unique_id}, R42\n"
-      gen_CmpndState subject.list[1]
-      @@outir << "jump #{subject.list.last.unique_id}, R42\n"
-      gen_CmpndState subject.list[2]
+    if respond_to?(method_name, subject)
+      send(method_name, subject)
     else
-      @@outir << "bfalse #{subject.list.last.unique_id}, R42\n"
-      gen_CmpndState subject.list[1]
+      # Do nothing with any visis_NodeName that aren't defined
     end
   end
 
-  def visit_AbsNode subject
+
+  def visit_Expr subject
+
+    if subject.attrib == "=" 
+      subject.list.first.name = "ASSIGN"
+    end
+
+    if ["==", "<=", ">=", "<", ">", "!="].include?(subject.attrib)
+      subject.name = "Comparison"
+    end
+        
+  end
+
+  def visit_Literal subject
+    if subject.name == "NAME"
+      entry = @sym.retreiveSymbol(subject.attrib)
+      subject.ir = "memld R#{@expr_counter}, #{entry.counter} # R#{@expr_counter} = #{subject.attrib}"
+      subject.name = "REGISTER"
+      subject.attrib = "R#{@expr_counter}"
+      @expr_counter += 1
+    elsif subject.name == "NUM"
+      subject.ir = "immld R#{@expr_counter}, #{subject.attrib} # R#{@expr_counter} = #{subject.attrib}"
+      subject.name = "REGISTER"
+      subject.attrib = "R#{@expr_counter}"
+      @expr_counter += 1
+    end
+
+  end
+
+end
+
+
+class IRPass2 
+  attr_accessor :expr_counter
+
+  def initialize outa, outp, outir, sym, ast, expr_counter
+    @sym = sym
+    @@outa = outa
+    @@outp = outp
+    @@outir = outir
+    @ast = ast
+
+    @expr_counter = expr_counter
+  end
+
+  def visit subject, outa, outp, outir
+    method_name = "visit_#{subject.class}".intern
+    if respond_to?(method_name, subject)
+      send(method_name, subject)
+    else
+      # Do nothing with any visis_NodeName that aren't defined
+    end
+  end
+
+  def visit_Dec subject
+
+    if subject.name == "="
+      entry = @sym.retreiveSymbol(subject.list.first.attrib)
+      subject.ir = "memst #{subject.list.last.attrib}, #{entry.counter} # #{subject.list[0].attrib} = #{subject.list.last.attrib}\n"
+    end
+
+  end
+
+  def visit_Expr subject
+
+    if subject.name == "Operator"
+      subject.list.each do |child|
+        if child.name == "Operator"
+          return
+        end
+      end
+
+      # At this point we have an expression that is NUM Operator NAME|NUM
+      if subject.attrib == "="
+        entry = @sym.retreiveSymbol(subject.list.first.attrib)
+        subject.ir = "memst #{subject.list.last.attrib}, #{entry.counter} # #{subject.list[0].attrib} = #{subject.list.last.attrib}\n"
+        return
+      else
+        subject.ir = "calc R#{@expr_counter}, {#{subject.list.first.attrib} #{subject.attrib} #{subject.list.last.attrib}}\n"
+        subject.name = "REGISTER"
+        subject.attrib = "R#{@expr_counter}"
+        @expr_counter += 1
+
+        @ast.accept(IRPass2.new(@@outa, @@outp, @@outir, @sym, @ast, @expr_counter), @@outa, @@outp, @@outir)
+      end
+    end
+
+  end
+
+  def visit_IfNode subject
+    if subject.name == "If"
+      if subject.list.first.attrib == "=="
+        subject.list.first.ir = "bneq #{subject.list.last}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
+      elsif subject.list.first.attrib == "!="
+        subject.list.first.ir = "beq #{subject.list.last}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
+      elsif subject.list.first.attrib == "<="
+        subject.list.first.ir = "bgt #{subject.list.last}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
+      elsif subject.list.first.attrib == ">="
+        subject.list.first.ir = "blt #{subject.list.last}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
+      elsif subject.list.first.attrib == "<"
+        subject.list.first.ir = "bge #{subject.list.last}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
+      elsif subject.list.first.attrib == ">"
+        subject.list.first.ir = "ble #{subject.list.last}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
+      end
+    elsif subject.name == "IfElse"
+      if subject.list.first.attrib == "=="
+        subject.list.first.ir = "bneq #{subject.list[3]}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"  
+        subject.list[2].ir = "jump #{subject.list.last}"
+      elsif subject.list.first.attrib == "!="
+        subject.list.first.ir = "be1 #{subject.list[3]}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"  
+        subject.list[2].ir = "jump #{subject.list.last}"
+      elsif subject.list.first.attrib == "<="
+        subject.list.first.ir = "bgt #{subject.list[3]}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"  
+        subject.list[2].ir = "jump #{subject.list.last}"
+      elsif subject.list.first.attrib == ">="
+        subject.list.first.ir = "blt #{subject.list[3]}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"  
+        subject.list[2].ir = "jump #{subject.list.last}"
+      elsif subject.list.first.attrib == "<"
+        subject.list.first.ir = "bge #{subject.list[3]}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"  
+        subject.list[2].ir = "jump #{subject.list.last}"  
+      elsif subject.list.first.attrib == ">"
+        subject.list.first.ir = "ble #{subject.list[3]}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"  
+        subject.list[2].ir = "jump #{subject.list.last}"
+      end
+    end
   end
 
   def visit_WhileNode subject
-    gen_Expr subject.list[0]
-    @@outir << "bfalse #{subject.list[2].unique_id}, R42\n"
-
-    gen_CmpndState subject.list[1]
-
-    gen_Expr subject.list[0]
-    @@outir << "btrue #{subject.list[1].unique_id}, R42\n"
+      if subject.list.first.attrib == "=="
+        subject.list.first.ir = "bneq #{subject.list.last}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
+        subject.list.last.ir = "jump #{subject.list.first}"
+      elsif subject.list.first.attrib == "!="
+        subject.list.first.ir = "beq #{subject.list.last}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
+        subject.list.last.ir = "jump #{subject.list.first}"
+      elsif subject.list.first.attrib == "<="
+        subject.list.first.ir = "bgt #{subject.list.last}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
+        subject.list.last.ir = "jump #{subject.list.first}"
+      elsif subject.list.first.attrib == ">="
+        subject.list.first.ir = "blt #{subject.list.last}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
+        subject.list.last.ir = "jump #{subject.list.first}"
+      elsif subject.list.first.attrib == "<"
+        subject.list.first.ir = "bge #{subject.list.last}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
+        subject.list.last.ir = "jump #{subject.list.first}"
+      elsif subject.list.first.attrib == ">"
+        subject.list.first.ir = "ble #{subject.list.last}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
+        subject.list.last.ir = "jump #{subject.list.first}"
+      end
   end
 
-  def visit_StateList subject
+end
+
+class IRPass3 
+  attr_accessor :expr_counter
+
+  def initialize outa, outp, outir, sym, ast, expr_counter
+    @sym = sym
+    @@outa = outa
+    @@outp = outp
+    @@outir = outir
+    @ast = ast
+
+    @expr_counter = expr_counter
   end
 
-  def visit_CmpndState subject
+  def visit subject, outa, outp, outir
+    method_name = "visit_#{subject.class}".intern
+    if respond_to?(method_name, subject)
+      send(method_name, subject)
+    else
+      # Do nothing with any visis_NodeName that aren't defined
+    end
   end
 
-  def visit_Lambda subject
-    @@outir << "# Not an awful hack: #{subject.unique_id}\n"
+  def visit_Root subject
+    postOrder(subject)
   end
 
+  def postOrder(node)
+    if node != nil
+      node.list.each do |next_node|
+        postOrder(next_node)
+      end
+    end
+    if node.respond_to?(:ir)
+      if !node.ir.empty? && !node.ir.nil?
+        @@outir << "#{node.ir}\n"
+      end
 
-
-  def gen_Root subject
-  end
-
-  def gen_Decls subject
-  end
-
-  def gen_DecList subject
-  end
-
-  def gen_States subject
-  end
-
-  def gen_Dec subject
-  end
-
-  def gen_DirectDec subject
-  end
-
-  def gen_RExpr subject
-  end
-
-  def gen_Expr subject
-    @@outir << "calc R42, N#{@expr_counter}\n"
-    @expr_counter += 1
-  end
-
-  def gen_IfNode subject
-  end
-
-  def gen_AbsBide subject
-  end
-
-  def gen_WhileNode subject
-  end
-
-  def gen_StateList subject
-  end
-
-  def gen_CmpndState subject
-    @@outir << "# #{subject.unique_id}\n"
+    end
   end
 
 end

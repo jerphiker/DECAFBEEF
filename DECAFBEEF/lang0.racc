@@ -1,6 +1,6 @@
 class Lang0
 
-token TYPE NAME NUM '='
+token TYPE NAME NUM '=' NOTNL
 token 'if' 'else'
 token '(' ')'
 token OPERATOR
@@ -10,13 +10,14 @@ token '{' '}' 'return'
 prechigh
   left '*' '/'
   left '+' '-'
+  left '==' OPERATOR
 preclow
 
 start s
 rule
 
-s : decls                                   { result = Root.new("Start", nil, val[0]) }
-  | decls statement_list decls              { result = Root.new("Start", nil, val[0], val[1], val[2]) }
+s : decls                              { result = Root.new("Start", nil, val[0]) }
+  | decls statement_list decls         { result = Root.new("Start", nil, val[0], val[1], val[2]) }
 
 decls : TYPE decl_list ';' decls            { result = Decls.new("Decls", val[0], val[1], val[3])}
       | "const" TYPE decl_list ';' decls    { result = Decls.new("Decls", val[0], val[2], val[4])}
@@ -33,7 +34,7 @@ statement_list : statement                  { result = StateList.new("Statement 
 
 statement : cmpnd_state                                { result = StateList.new("Statement List", nil, val[0]) }
   | 'if' '(' expr ')' cmpnd_state                      { result = IfNode.new("If", nil, val[2], val[4], Lambda.new("Lambda", nil))}
-  | 'if' '(' expr ')' cmpnd_state 'else' cmpnd_state   { result = IfNode.new("IfElse", nil, val[2], val[4], val[6], Lambda.new("Lambda", nil))}
+  | 'if' '(' expr ')' cmpnd_state 'else' cmpnd_state   { result = IfNode.new("IfElse", nil, val[2], val[4], Lambda.new("Lambda", nil), val[6], Lambda.new("Lambda", nil))}
   | 'while' '(' expr ')' cmpnd_state                   { result = WhileNode.new("While", nil, val[2], val[4], Lambda.new("Lambda", nil)) }
   | 'return' ';'                                       { result = Expr.new("Expr", val[0]) }
   | 'return' expr ';'                                  { result = Expr.new("Expr", val[0], val[1]) }
@@ -50,8 +51,8 @@ expr :  expr OPERATOR expr                  { result = Expr.new("Operator", val[
      | expr '*' expr                        { result = Expr.new("Operator", val[1], val[0], val[2]) }
      | expr '/' expr                        { result = Expr.new("Operator", val[1], val[0], val[2]) }
      | '(' expr ')'                         { result = val[1] }
-     | NAME                                 { result = Expr.new("NAME", val[0]) }
-     | NUM                                  { result = Expr.new("NUM", val[0]) }
+     | NAME                                 { result = Literal.new("NAME", val[0]) }
+     | NUM                                  { result = Literal.new("NUM", val[0]) }
 
 
 
@@ -98,6 +99,7 @@ require "./AST.rb"
 require "./lang0.rex"
 require "./symtab.rb"
 require "./ir.rb"
+require "./ArithmeticVisitor.rb"
 
 ---- footer ----
 
@@ -124,16 +126,20 @@ outir = File.open("OUTPUT.ir", "w")
 exe = Lang0WithErrors.new
     begin
       ast = Ast.new(exe.scan_str($stdin.read))
-      # root = exe.scan_str($stdin.read)
       sym = SymbolTable.new
       ast.accept(sym, outa, outp, outir)
-      ast.accept(AstVisitorPass1.new, outa, outp, outir)
-      ast.accept(AstVisitorPass2.new, outa, outp, outir)
-      # ast.accept(AstVisitorPassIR.new, outa, outp, outir)
+      # ast.accept(AstVisitorPass1.new, outa, outp, outir)
+      # ast.accept(AstVisitorPass2.new, outa, outp, outir)
       # p sym.table
       # p sym.namespace
-      ir = IR.new(outir, sym)
+      ir = IRPass1.new(outa, outp, outir, sym, ast, 0)
       ast.accept(ir, outa, outp, outir)
+      ir2 = IRPass2.new(outa, outp, outir, sym, ast, ir.expr_counter)
+      ast.accept(ir2, outa, outp, outir)
+      ir3 = IRPass3.new(outa, outp, outir, sym, ast, ir2.expr_counter)
+      ast.accept(ir3, outa, outp, outir)
+      ast.accept(AstVisitorPass1.new, outa, outp, outir)
+      ast.accept(AstVisitorPass2.new, outa, outp, outir)
     rescue ParseError => e
       puts 'Parsing error'
       puts e.message
