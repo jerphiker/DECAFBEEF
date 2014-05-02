@@ -1,6 +1,6 @@
 
 
-class SymbolEntry < BaseVisitor
+class SymbolEntry
   attr_accessor :name, :origin, :type, :const, :constness, :counter
 
   def initialize name, origin, type, const, c
@@ -13,7 +13,7 @@ class SymbolEntry < BaseVisitor
   end
 
   def inspect
-    "[#{@name},#{@origin},#{@type},#{@const}, #{@counter}]"
+    "[#{@name}, #{@origin}, #{@type}, #{@constness}, #{@counter}]"
   end 
 
 end
@@ -26,7 +26,7 @@ class SymbolTable < SymbolEntry
     @table = Array.new
     @current_scope = @table.first
     @namespace = String.new
-    @counter = 20000
+    @counter = 0
   end
 
   def openScope
@@ -39,17 +39,27 @@ class SymbolTable < SymbolEntry
     @current_scope = @table.last
   end
 
+  def gotoFirstScope
+    @current_scope = @table.first
+  end
+
+  def gotoNextScope
+    puts @current_scope
+    @current_scope = @table.index(@current_scope+1)
+  end
+
   def enterSymbol name, a
     if !decalredLocally(name)
+      if !isGlobal(name)
         if @namespace.include?(name)
-          @counter += 4
           @current_scope.push(SymbolEntry.new(name,@namespace.index(name), nil, a, @counter))
-          
-        else
           @counter += 4
+        else
           @current_scope.push(SymbolEntry.new(name,@namespace.length, nil, a, @counter))
+          @counter += 4
           @namespace << name
         end
+      end
     else
       raise ParseError.new( "Error: '" + name + "' previously declared somewhere")
     end
@@ -76,89 +86,15 @@ class SymbolTable < SymbolEntry
     false
   end
 
-  def visit_Root subject
-    openScope
-  end
-
-  def visit_Decls subject
-    if subject.attrib == "const"
-      @constness = "const"
-    else
-      @constness = nil
-    end
-
-  end
-
-  def visit_DeclList subject
-  end
-
-  def visit_States subject
-  end
-
-  def visit_Dec subject
-    # This makes an assumption  based on the grammar that in the constructed AST
-    #  the first child(leaf) node will be the name of the declaration
-    # p subject.list
-    if @constness == "const"
-      subject.attrib = "const"
-    end
-    enterSymbol subject.list.first.attrib, subject.attrib
-
-  end
-
-  def visit_DirectDec subject
-
-  end
-
-  def visit_RExpr subject
-  end
-
-  def visit_Expr subject
-    if subject.name == "NAME"
-      if retreiveSymbol(subject.attrib) == false
-        raise ParseError.new( "Error: '" + subject.list.first.attrib + "' undeclared (First use in this function)")
+  def isGlobal name
+    @table.first.each do |item|
+      if item.name == name
+        return true
       end
-
     end
-    if subject.attrib == "="
-        if retreiveSymbol(subject.list.first.attrib) == false
-          puts "Error: '" + subject.list.first.attrib + "' undeclared (First use in this function)"
-        elsif retreiveSymbol(subject.list.first.attrib).const == "const"
-          raise ParseError.new("Error: Assignment of readonly variable " + subject.list.first.attrib)
-
-        end
-
-    end
+    false
   end
 
-  def visit_IfNode subject
-  end
-
-  def visit_AbsNode subject
-  end
-
-  def visit_WhileNode subject
-  end
-
-  def visit_StateList subject
-  end
-
-  def visit_CmpndState subject
-    openScope
-  end
-
-  def visit_Lambda subject
-  end
-
-  def visit_Literal subject
-
-    if subject.name == "NAME"
-      if retreiveSymbol(subject.attrib) == false
-        raise ParseError.new( "Error: '" + subject.list.first.attrib + "' undeclared (First use in this function)")
-      end
-
-    end
-    
-  end
+  
 
 end
