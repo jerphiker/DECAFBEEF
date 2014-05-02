@@ -2,7 +2,6 @@
 class AstParentSiblingVisistor
 
   def visit subject
-
     # Connect parent and sibling relationship
     subject.list.each do |node|
       if node != nil
@@ -63,10 +62,38 @@ class SymbolTableVisitor
   end
 
   def visit_Root subject
-    @symbol_table.openScope
+    preAndPostOrder(subject)
   end
 
-  def visit_Decls subject
+  def preAndPostOrder subject
+    method_name = "pre_#{subject.class}".intern
+    if respond_to?(method_name, subject)
+      send(method_name, subject)
+    else
+      # Do nothing with any visit_NodeName that aren't defined
+    end
+    if subject != nil
+      subject.list.each do |next_node|
+        preAndPostOrder(next_node)
+      end
+    end
+    method_name = "post_#{subject.class}".intern
+    if respond_to?(method_name, subject)
+      send(method_name, subject)
+    else
+      # Do nothing with any visit_NodeName that aren't defined
+    end
+  end
+
+  def pre_Root subject
+    @symbol_table.openScope subject
+  end
+
+  def post_Root subject
+    @symbol_table.closeScope
+  end
+
+  def pre_Decls subject
     if subject.attrib == "const"
       @symbol_table.constness = "const"
     else
@@ -75,7 +102,7 @@ class SymbolTableVisitor
 
   end
 
-  def visit_Dec subject
+  def pre_Dec subject
     # This makes an assumption  based on the grammar that in the constructed AST
     #  the first child(leaf) node will be the name of the declaration
     if @symbol_table.constness == "const"
@@ -85,7 +112,7 @@ class SymbolTableVisitor
 
   end
 
-  def visit_Expr subject
+  def pre_Expr subject
     if subject.name == "NAME"
       if @symbol_table.retreiveSymbol(subject.attrib) == false
         raise ParseError.new( "Error: '" + subject.list.first.attrib + "' undeclared (First use in this function)")
@@ -100,12 +127,15 @@ class SymbolTableVisitor
     end
   end
 
-  def visit_CmpndState subject
-    @symbol_table.openScope
+  def pre_CmpndState subject
+    @symbol_table.openScope subject
   end
 
-  def visit_Literal subject
+  def post_CmpndState subject
+    @symbol_table.closeScope
+  end
 
+  def pre_Literal subject
     if subject.name == "NAME"
       if @symbol_table.retreiveSymbol(subject.attrib) == false
         raise ParseError.new( "Error: '" + subject.list.first.attrib + "' undeclared (First use in this function)")
@@ -144,7 +174,7 @@ class IRPass1
 
   def visit_Literal subject
     if subject.name == "NAME"
-      entry = @sym.retreiveSymbol(subject.attrib)
+      entry = @sym.retreiveSymbolAt(subject.attrib, subject)
       subject.ir = "memld R9, #{entry.counter} # R#{@expr_counter} = #{subject.attrib}"
       subject.name = "REGISTER"
       subject.attrib = "R9"
@@ -180,7 +210,7 @@ class IRPass2
   def visit_Dec subject
 
     if subject.name == "="
-      entry = @sym.retreiveSymbol(subject.list.first.attrib)
+      entry = @sym.retreiveSymbolAt(subject.list.first.attrib, subject)
       subject.ir = "memst #{subject.list.last.attrib}, #{entry.counter} # #{subject.list[0].attrib} = #{subject.list.last.attrib}\n"
     end
 
@@ -197,7 +227,7 @@ class IRPass2
 
       # At this point we have an expression that is NUM Operator NAME|NUM
       if subject.attrib == "="
-        entry = @sym.retreiveSymbol(subject.list.first.attrib)
+        entry = @sym.retreiveSymbolAt(subject.list.first.attrib, subject)
         subject.ir = "memst #{subject.list.last.attrib}, #{entry.counter} # #{subject.list[0].attrib} = #{subject.list.last.attrib}\n"
         return
       else # calc instructions
