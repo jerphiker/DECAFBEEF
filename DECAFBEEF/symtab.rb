@@ -44,7 +44,6 @@ class SymbolTable < SymbolEntry
   end
 
   def gotoNextScope
-    puts @current_scope
     @current_scope = @table.index(@current_scope+1)
   end
 
