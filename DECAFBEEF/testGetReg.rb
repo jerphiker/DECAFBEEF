@@ -22,27 +22,32 @@ v0 = g.getNext
 v1 = g.getNext
 v2 = g.getNext
 
-puts r9
-puts r10
-puts r11
-puts r0
-puts r1
-puts r2
-puts r3
-puts r4
-puts r5
-puts r6
-puts r7
-puts r8
-puts v0
-puts v1
-puts v2
+puts r9			#	R9
+puts r10		#	R10
+puts r11		#	R11
+puts r0			#	R0
+puts r1			#	R1
+puts r2			#	R2
+puts r3			#	R3
+puts r4			#	R4
+puts r5			#	R5
+puts r6			#	R6
+puts r7			#	R7
+puts r8			#	R8
+puts v0			#	V0
+puts v1			#	V1
+puts v2			#	V2
 
 g.free(r10)
+r10 = nil
 g.free(r2)
+r2 = nil
 g.free(r7)
+r7 = nil
 g.free(v1)
+v1 = nil
 g.free(v2)
+v2 = nil
 
 rx = g.getNext
 ry = g.getNext
@@ -51,11 +56,11 @@ vx = g.getNext
 vy = g.getNext
 vz = g.getNext
 
-puts rx
-puts ry
-puts rz
-puts vx
-puts vy
-puts vz
+puts rx			#	R10
+puts ry			#	R2
+puts rz			#	R7
+puts vx			#	V1
+puts vy			#	V2
+puts vz			#	V3
 
 
