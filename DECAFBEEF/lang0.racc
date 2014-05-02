@@ -26,8 +26,8 @@ decls : TYPE decl_list ';' decls            { result = Decls.new("Decls", val[0]
 decl_list : decl                            { result = DeclList.new("Decl List", nil, val[0])}
           | decl_list ',' decl              { result = DeclList.new("Decl List", nil, val[0], val[2])}
 
-decl : NAME                                 { result = Dec.new("Assignment", nil, DirectDec.new("NAME", val[0]))}
-     | NAME '=' expr                        { result = Dec.new("=", nil, DirectDec.new("NAME", val[0]),val[2])}
+decl : NAME                                 { result = Dec.new("Assignment", nil, GlobalDec.new("NAME", val[0]))}
+     | NAME '=' expr                        { result = Dec.new("=", nil, GlobalDec.new("NAME", val[0]),val[2])}
 
 statement_list : statement                  { result = StateList.new("Statement List", nil, val[0]) } 
   | statement_list statement                { result = StateList.new("Statement List", nil, val[0], val[1]) }
@@ -62,62 +62,42 @@ require "./AST.rb"
 require "./lang0.rex"
 require "./symtab.rb"
 require "./ir.rb"
+require "./Visitors.rb"
 
 ---- footer ----
-
-class Lang0WithErrors < Lang0
-  def initialize
-    @yydebug = true
-  end
-  # https://github.com/JasonBarnabe/racc/blob/aef0fb1a9d20770bf0416286e8085c6f26fa7363/lib/racc/parser.rb#L542
-  def on_error(t, val, vstack)
-    errcontext = (@ss.pre_match[-10..-1] || @ss.pre_match) +
-  				@ss.matched + @ss.post_match[0..9]
-    raise ParseError, sprintf("\nparse error on value %s (%s) " +
-  							"around \"%s\"",
-  							val.inspect, token_to_str(t) || '?',
-  							errcontext)
-  end
-end
 
 outname = "OUTPUT"
 unless ARGV.length == 0
   outname = ARGV[0]
 end
 
-#puts outname
+$outerr = File.open(outname + ".err", "w")
+$outir = File.open(outname + ".ir", "w")
 
-outa = File.open(outname + ".a", "w")
-outp = File.open(outname + ".p", "w")
-outerr = File.open(outname + ".err", "w")
-outir = File.open(outname + ".ir", "w")
-
-exe = Lang0WithErrors.new
+exe = Lang0.new
     begin
       ast = Ast.new(exe.scan_str($stdin.read))
-      sym = SymbolTable.new
-      ast.accept(sym, outa, outp, outir)
-      ast.accept(AstVisitorPass1.new, outa, outp, outir)
-      ast.accept(AstVisitorPass2.new, outa, outp, outir)
-      # p sym.table
-      # p sym.namespace
-      ir = IRPass1.new(outa, outp, outir, sym, ast, 0)
-      ast.accept(ir, outa, outp, outir)
-      ir2 = IRPass2.new(outa, outp, outir, sym, ast, ir.expr_counter)
-      ast.accept(ir2, outa, outp, outir)
-      ir3 = IRPass3.new(outa, outp, outir, sym, ast, ir2.expr_counter)
-      ast.accept(ir3, outa, outp, outir)
-      #ast.accept(AstVisitorPass1.new, outa, outp, outir)
-      #ast.accept(AstVisitorPass2.new, outa, outp, outir)
+      ast.accept(AstParentSiblingVisistor.new)
+      symbol_table = SymbolTable.new()
+      ast.accept(SymbolTableVisitor.new(symbol_table))
+      # ast.accept(AstGraphVisitor1.new)
+      # ast.accept(AstGraphVisitor2.new)
+      
+      # p symbol_table.namespace
+      ir = IRPass1.new(symbol_table, ast, 0)
+      ast.accept(ir)
+      ir2 = IRPass2.new(symbol_table, ast, ir.expr_counter)
+      ast.accept(ir2)
+      ir3 = IRPass3.new(symbol_table, ast, ir2.expr_counter)
+      ast.accept(ir3)
+      ast.accept(AstGraphVisitor1.new)
+      ast.accept(AstGraphVisitor2.new)
+      # p symbol_table.table
     rescue ParseError => e
-      outerr << 'Parsing error' << "\n"
-      outerr << e.message << "\n"
-      outerr << e.backtrace.inspect << "\n"
+      $outerr << 'Parsing error' << "\n" << e.message << "\n" << e.backtrace.inspect << "\n"
       raise SystemExit.new(1)
     end
 
-outa.close
-outp.close
-outerr.close
-outir.close
+$outerr.close
+$outir.close
 
