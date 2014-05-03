@@ -1,7 +1,7 @@
 require 'securerandom'
 
 class AbsNode
-  attr_accessor :list, :name, :unique_id, :attrib, :ir, :parent, :leftmost_sib, :right_sib
+  attr_accessor :list, :name, :unique_id, :attrib, :ir, :parent, :leftmost_sib, :right_sib, :ir_count, :result_reg
 
   def accept(visitor)
     visitor.visit(self)
@@ -13,6 +13,8 @@ class AbsNode
     @unique_id = SecureRandom.uuid
     @attrib = a
     @ir = String.new
+    @ir_count = nil
+    @result_reg = nil
 
     @parent = nil
     @leftmost_sib = nil
@@ -93,8 +95,3 @@ end
 
 class Literal < AbsNode
 end
-
-
-
-
-

@@ -1,3 +1,43 @@
+require 'set'
+
+COMPARISON_OPERATORS = Set.new %w{== != <= >= < >}
+
+class BaseVisitor
+  def visit subject
+    method_name = "visit_#{subject.class}".intern
+    if respond_to?(method_name, subject)
+      send(method_name, subject)
+    else
+      # Do nothing with any visit_NodeName that aren't defined
+    end
+  end
+
+  def preAndPostOrder subject
+    if subject == nil then return end
+
+    method_name = "pre_#{subject.class}".intern
+    if respond_to?(method_name, subject)
+      send(method_name, subject)
+    else
+      if respond_to?(:pre, subject)
+        send(:pre, subject)
+      end
+    end
+
+    subject.list.each do |next_node|
+      preAndPostOrder(next_node)
+    end
+
+    method_name = "post_#{subject.class}".intern
+    if respond_to?(method_name, subject)
+      send(method_name, subject)
+    else
+      if respond_to?(:post, subject)
+        send(:post, subject)
+      end
+    end
+  end
+end
 
 class AstParentSiblingVisistor
 
@@ -46,43 +86,15 @@ class AstGraphVisitor2
   end
 end
 
-class SymbolTableVisitor
+# INCOHERENT RAGE
+class SymbolTableVisitor < BaseVisitor
 
   def initialize sym 
     @symbol_table = sym
   end
 
-  def visit subject
-    method_name = "visit_#{subject.class}".intern
-    if respond_to?(method_name, subject)
-      send(method_name, subject)
-    else
-      # Do nothing with any visit_NodeName that aren't defined
-    end
-  end
-
   def visit_Root subject
     preAndPostOrder(subject)
-  end
-
-  def preAndPostOrder subject
-    method_name = "pre_#{subject.class}".intern
-    if respond_to?(method_name, subject)
-      send(method_name, subject)
-    else
-      # Do nothing with any visit_NodeName that aren't defined
-    end
-    if subject != nil
-      subject.list.each do |next_node|
-        preAndPostOrder(next_node)
-      end
-    end
-    method_name = "post_#{subject.class}".intern
-    if respond_to?(method_name, subject)
-      send(method_name, subject)
-    else
-      # Do nothing with any visit_NodeName that aren't defined
-    end
   end
 
   def pre_Root subject
@@ -144,58 +156,88 @@ class SymbolTableVisitor
   end
 end
 
-class IRPass1 
-  attr_accessor :expr_counter
-
-  def initialize sym, ast, expr_counter
+class CalcExprVisitor < BaseVisitor
+  def initialize sym, ast
     @sym = sym
     @ast = ast
-    @expr_counter = expr_counter
+
+    @registers = ['R0', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8']
   end
 
-  def visit subject
-    method_name = "visit_#{subject.class}".intern
-    if respond_to?(method_name, subject)
-      send(method_name, subject)
+  def visit_Root subject
+    preAndPostOrder(subject)
+  end
+
+  def get_needs subject
+    if subject.class == Literal
+      if subject.name == 'NAME' and subject.parent.attrib == '='
+        return 0
+      else
+        return 1
+      end
+    end
+
+    left_count = get_needs subject.list.first
+    right_count = get_needs subject.list.last
+
+    if left_count == right_count
+      return left_count + 1
     else
-      # Do nothing with any visit_NodeName that aren't defined
+      return left_count > right_count ? left_count : right_count
     end
   end
 
-  def visit_Expr subject
+  def calc_tree subject, registers
+    subject.result_reg = registers.first
+    if subject.class == Literal then return end
 
-    if subject.attrib == "=" 
-      subject.list.first.name = "ASSIGN"
-    elsif ["==", "<=", ">=", "<", ">", "!="].include?(subject.attrib)
-      subject.name = "Comparison"
+    left_count = get_needs subject.list.first
+    right_count = get_needs subject.list.last
+
+    if left_count >= right_count
+      calc_tree subject.list.first, registers
+      calc_tree subject.list.last, registers.drop(1)
+    else
+      calc_tree subject.list.last, registers
+      calc_tree subject.list.first, registers.drop(1)
     end
-        
   end
 
-  def visit_Literal subject
-    if subject.name == "NAME"
-      entry = @sym.retreiveSymbolAt(subject.attrib, subject)
-      subject.ir = "memld R9, #{entry.counter} # R#{@expr_counter} = #{subject.attrib}"
-      subject.name = "REGISTER"
-      subject.attrib = "R9"
-      # @expr_counter += 1
-    elsif subject.name == "NUM"
-      subject.name = "LITERAL"
-      subject.ir = "immld R9, #{subject.attrib} # R#{@expr_counter} = #{subject.attrib}"
-      subject.attrib = "R9"
-      # @expr_counter += 1
+  def pre_Expr subject
+    if subject.parent.class != Expr
+      calc_tree subject, @registers
     end
+  end
 
+  def pre_Dec subject
+    if subject.list.last.class != Expr
+      subject.list.last.result_reg = @registers.first
+    end
   end
 end
 
-class IRPass2 
-  attr_accessor :expr_counter
+OP_BRANCH_INSTS = {
+  "==" => "bneq",
+  "!=" => "beq",
+  "<=" => "bgt",
+  ">=" => "blt",
+  "<" => "bge",
+  ">" => "ble",
+}
 
-  def initialize sym, ast, expr_counter
+OP_BRANCH_NOT_INSTS = {
+  "==" => "bneq",
+  "!=" => "beq",
+  "<=" => "bgt",
+  ">=" => "blt",
+  "<" => "bge",  
+  ">" => "ble",
+}
+
+class GenIRVisitor
+  def initialize sym, ast
     @sym = sym
     @ast = ast
-    @expr_counter = expr_counter
   end
 
   def visit subject
@@ -211,110 +253,78 @@ class IRPass2
 
     if subject.name == "="
       entry = @sym.retreiveSymbolAt(subject.list.first.attrib, subject)
-      subject.ir = "memst #{subject.list.last.attrib}, #{entry.counter} # #{subject.list[0].attrib} = #{subject.list.last.attrib}\n"
+      subject.ir = "memst #{subject.list.last.result_reg}, <<#{entry.alias}>> # #{subject.list[0].attrib} = #{subject.list.last.result_reg}"
     end
 
   end
 
   def visit_Expr subject
+    if COMPARISON_OPERATORS.include? subject.attrib then return end
 
-    if subject.name == "Operator"
-      subject.list.each do |child|
-        if child.name == "Operator"
-          return
-        end
-      end
-
-      # At this point we have an expression that is NUM Operator NAME|NUM
-      if subject.attrib == "="
-        entry = @sym.retreiveSymbolAt(subject.list.first.attrib, subject)
-        subject.ir = "memst #{subject.list.last.attrib}, #{entry.counter} # #{subject.list[0].attrib} = #{subject.list.last.attrib}\n"
-        return
-      else # calc instructions
-        if subject.list.last.name == "LITERAL"
-          subject.list.last.ir = ""
-        end
-          subject.ir = "#{subject.attrib} R#{@expr_counter}, #{subject.list.first.attrib}, #{subject.list.last.attrib}\n"
-          subject.name = "REGISTER"
-          subject.attrib = "R#{@expr_counter}"
-          @expr_counter += 1
-
-          @ast.accept(IRPass2.new(@sym, @ast, @expr_counter))
-        
-
-      end
+    if subject.attrib == "return"
+      subject.ir = "jump +0"
+    elsif subject.attrib == "="
+      entry = @sym.retreiveSymbolAt(subject.list.first.attrib, subject)
+      subject.ir = "memst #{subject.list.last.result_reg}, <<#{entry.alias}>> # #{subject.list[0].attrib} = #{subject.list.last.result_reg}"
+    else # calc instructions
+      subject.ir = "#{subject.attrib} #{subject.result_reg}, #{subject.list.first.result_reg}, #{subject.list.last.result_reg}"
     end
+  end
 
+  def visit_Literal subject
+    if subject.name == 'NAME'
+      if subject.parent.attrib == '=' then return end
+      entry = @sym.retreiveSymbolAt(subject.attrib, subject)
+      subject.ir = "memld #{subject.result_reg}, <<#{entry.alias}>> # #{subject.result_reg} = #{subject.attrib}"
+    elsif subject.name == 'NUM'
+      subject.ir = "immld #{subject.result_reg}, #{subject.attrib} # #{subject.result_reg} = #{subject.attrib}"
+    end
   end
 
   def visit_IfNode subject
+    comparison = subject.list.first
     if subject.name == "If"
-      if subject.list.first.attrib == "=="
-        subject.list.first.ir = "bneq #{subject.list.last.unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
-      elsif subject.list.first.attrib == "!="
-        subject.list.first.ir = "beq #{subject.list.last.unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
-      elsif subject.list.first.attrib == "<="
-        subject.list.first.ir = "bgt #{subject.list.last.unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
-      elsif subject.list.first.attrib == ">="
-        subject.list.first.ir = "blt #{subject.list.last.unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
-      elsif subject.list.first.attrib == "<"
-        subject.list.first.ir = "bge #{subject.list.last.unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
-      elsif subject.list.first.attrib == ">"
-        subject.list.first.ir = "ble #{subject.list.last.unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
-      end
+      subject.list.first.ir = "#{OP_BRANCH_INSTS[comparison.attrib]} <<sibling-inst 0 2>>, #{subject.list.first.list.first.result_reg}, #{subject.list.first.list.last.result_reg}"
     elsif subject.name == "IfElse"
-      if subject.list.first.attrib == "=="
-        subject.list.first.ir = "bneq #{subject.list[3].unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"  
-        subject.list[2].ir = "jump #{subject.list.last.unique_id}"
-      elsif subject.list.first.attrib == "!="
-        subject.list.first.ir = "be1 #{subject.list[3].unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"  
-        subject.list[2].ir = "jump #{subject.list.last.unique_id}"
-      elsif subject.list.first.attrib == "<="
-        subject.list.first.ir = "bgt #{subject.list[3].unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"  
-        subject.list[2].ir = "jump #{subject.list.last.unique_id}"
-      elsif subject.list.first.attrib == ">="
-        subject.list.first.ir = "blt #{subject.list[3].unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"  
-        subject.list[2].ir = "jump #{subject.list.last.unique_id}"
-      elsif subject.list.first.attrib == "<"
-        subject.list.first.ir = "bge #{subject.list[3].unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"  
-        subject.list[2].ir = "jump #{subject.list.last.unique_id}"  
-      elsif subject.list.first.attrib == ">"
-        subject.list.first.ir = "ble #{subject.list[3].unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"  
-        subject.list[2].ir = "jump #{subject.list.last.unique_id}"
-      end
+      subject.list.first.ir = "#{OP_BRANCH_NOT_INSTS[comparison.attrib]} <<sibling-inst 0 3>>, #{subject.list.first.list.first.result_reg}, #{subject.list.first.list.last.result_reg}"
+      subject.list[2].ir = "jump <<sibling-inst 2 4>>"
     end
   end
 
   def visit_WhileNode subject
-      if subject.list.first.attrib == "=="
-        subject.list.first.ir = "bneq #{subject.list.last.unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
-        subject.list.last.ir = "jump #{subject.list.first.unique_id}"
-      elsif subject.list.first.attrib == "!="
-        subject.list.first.ir = "beq #{subject.list.last.unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
-        subject.list.last.ir = "jump #{subject.list.first.unique_id}"
-      elsif subject.list.first.attrib == "<="
-        subject.list.first.ir = "bgt #{subject.list.last.unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
-        subject.list.last.ir = "jump #{subject.list.first.unique_id}"
-      elsif subject.list.first.attrib == ">="
-        subject.list.first.ir = "blt #{subject.list.last.unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
-        subject.list.last.ir = "jump #{subject.list.first.unique_id}"
-      elsif subject.list.first.attrib == "<"
-        subject.list.first.ir = "bge #{subject.list.last.unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
-        subject.list.last.ir = "jump #{subject.list.first.unique_id}"
-      elsif subject.list.first.attrib == ">"
-        subject.list.first.ir = "ble #{subject.list.last.unique_id}, #{subject.list.first.list.first.attrib}, #{subject.list.first.list.last.attrib}"
-        subject.list.last.ir = "jump #{subject.list.first.unique_id}"
-      end
+    comparison = subject.list.first
+    subject.list.first.ir = "#{OP_BRANCH_NOT_INSTS[comparison.attrib]} <<sibling-inst 0 2>>, #{subject.list.first.list.first.result_reg}, #{subject.list.first.list.last.result_reg}"
+    subject.list.last.ir = "jump <<sibling-inst 2 0>>"
   end
 end
 
-class IRPass3 
-  attr_accessor :expr_counter
-
-  def initialize sym, ast, expr_counter
+# Counts the number of IR instructions contained within each node
+class CountIRVisitor < BaseVisitor
+  def initialize sym, ast
     @sym = sym
     @ast = ast
-    @expr_counter = expr_counter
+  end
+
+  def visit_Root subject
+    preAndPostOrder(subject)
+  end
+
+  def pre subject
+    if !subject.ir.nil? && !subject.ir.empty? then subject.ir_count = subject.ir_count || 1 end
+  end
+
+  def post subject
+    subject.ir_count = (subject.ir_count || 0) + subject.list.reduce(0) { |sum, node| sum + ((node && node.ir_count) ? node.ir_count : 0) }
+  end
+end
+
+# Actually outputs the IR and resolves symbol locations and relative jumps
+class OutputIRVisitor
+  def initialize sym, ast
+    @sym = sym
+    @ast = ast
+    @globals_start = @ast.root.ir_count * 4
+    @locals_start = @globals_start + @sym.num_globals * 4
   end
 
   def visit subject
@@ -337,10 +347,31 @@ class IRPass3
       end
     end
     if node.respond_to?(:ir)
-      if !node.ir.empty? && !node.ir.nil?
-        $outir << "#{node.ir}\n"
-      end
+      if !node.ir.nil? && !node.ir.empty?
+        $outir << node.ir.gsub(/<<([a-z-]+) (\d+)(?: (\d+))?>>/) do |match|
+          loc = 0
+          if $1 == 'global'
+            loc = @globals_start + $2.to_i * 4
+          elsif $1 == 'local'
+            loc = @locals_start + $2.to_i * 4
+          elsif $1 == 'sibling-inst'
+            start = $2.to_i
+            finish = $3.to_i
 
+            if finish > start
+              loc = node.parent.list[start..(finish - 1)].reduce(0) { |sum, subnode| sum + (subnode.ir_count || 0) }
+            else
+              loc = -node.parent.list[finish..(start - 1)].reduce(0) { |sum, subnode| sum + (subnode.ir_count || 0) }
+            end
+
+            loc = sprintf "%+d", loc
+          end
+
+          loc.to_s
+        end
+
+        $outir << "\n"
+      end
     end
   end
 end

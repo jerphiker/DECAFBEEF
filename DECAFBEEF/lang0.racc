@@ -38,7 +38,7 @@ statement : cmpnd_state                                { result = StateList.new(
   | 'while' '(' expr ')' cmpnd_state                   { result = WhileNode.new("While", nil, val[2], val[4], Lambda.new("Lambda", nil)) }
   | 'return' ';'                                       { result = Expr.new("Expr", val[0]) }
   | 'return' expr ';'                                  { result = Expr.new("Expr", val[0], val[1]) }
-  | expr ';'                                           { result = Expr.new("Expr", nil, val[0]) }
+  | expr ';'                                           { result = val[0] }
 
 cmpnd_state : '{' decls '}'                            { result = CmpndState.new("Compound Statements", nil, val[1]) }
   | '{' decls statement_list '}'                       { result = CmpndState.new("Compound Statements", nil, val[1], val[2]) }
@@ -84,12 +84,10 @@ exe = Lang0.new
       # ast.accept(AstGraphVisitor2.new)
       
       # p symbol_table.namespace
-      ir = IRPass1.new(symbol_table, ast, 0)
-      ast.accept(ir)
-      ir2 = IRPass2.new(symbol_table, ast, ir.expr_counter)
-      ast.accept(ir2)
-      ir3 = IRPass3.new(symbol_table, ast, ir2.expr_counter)
-      ast.accept(ir3)
+      ast.accept(CalcExprVisitor.new(symbol_table, ast))
+      ast.accept(GenIRVisitor.new(symbol_table, ast))
+      ast.accept(CountIRVisitor.new(symbol_table, ast))
+      ast.accept(OutputIRVisitor.new(symbol_table, ast))
       ast.accept(AstGraphVisitor1.new)
       ast.accept(AstGraphVisitor2.new)
       # p symbol_table.table
