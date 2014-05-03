@@ -132,7 +132,7 @@ class SymbolTableVisitor < BaseVisitor
     end
     if subject.attrib == "="
         if @symbol_table.retreiveSymbol(subject.list.first.attrib) == false
-          puts "Error: '" + subject.list.first.attrib + "' undeclared (First use in this function)"
+          raise ParseError.new("Error: '" + subject.list.first.attrib + "' undeclared (First use in this function)")
         elsif @symbol_table.retreiveSymbol(subject.list.first.attrib).const == "const"
           raise ParseError.new("Error: Assignment of readonly variable " + subject.list.first.attrib)
         end
@@ -293,7 +293,7 @@ class GenIRVisitor
 
   def visit_WhileNode subject
     comparison = subject.list.first
-    subject.list.first.ir = "#{OP_BRANCH_NOT_INSTS[comparison.attrib]} <<sibling-inst 0 2>>, #{subject.list.first.list.first.result_reg}, #{subject.list.first.list.last.result_reg}"
+    subject.list.first.ir = "#{OP_BRANCH_NOT_INSTS[comparison.attrib]} <<sibling-inst 0 3>>, #{subject.list.first.list.first.result_reg}, #{subject.list.first.list.last.result_reg}"
     subject.list.last.ir = "jump <<sibling-inst 2 0>>"
   end
 end
@@ -359,7 +359,7 @@ class OutputIRVisitor
             finish = $3.to_i
 
             if finish > start
-              loc = node.parent.list[start..(finish - 1)].reduce(0) { |sum, subnode| sum + (subnode.ir_count || 0) }
+              loc = node.parent.list[(start+1)..(finish - 1)].reduce(0) { |sum, subnode| sum + (subnode ? (subnode.ir_count || 0) : 1) } + 1
             else
               loc = -node.parent.list[finish..(start - 1)].reduce(0) { |sum, subnode| sum + (subnode.ir_count || 0) }
             end
