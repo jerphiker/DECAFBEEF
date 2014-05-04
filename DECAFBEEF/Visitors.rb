@@ -160,8 +160,7 @@ class CalcExprVisitor < BaseVisitor
   def initialize sym, ast
     @sym = sym
     @ast = ast
-
-    @registers = ['R0', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8']
+    @registers = ['R9', 'R10', 'R11', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8']
   end
 
   def visit_Root subject
