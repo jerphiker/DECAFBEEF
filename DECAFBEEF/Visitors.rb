@@ -150,7 +150,7 @@ class SymbolTableVisitor < BaseVisitor
   def pre_Literal subject
     if subject.name == "NAME"
       if @symbol_table.retreiveSymbol(subject.attrib) == false
-        raise ParseError.new( "Error: '" + subject.list.first.attrib + "' undeclared (First use in this function)")
+        raise ParseError.new( "Error: '" + subject.attrib + "' undeclared (First use in this function)")
       end
     end
   end
@@ -267,7 +267,15 @@ class GenIRVisitor
       entry = @sym.retreiveSymbolAt(subject.list.first.attrib, subject)
       subject.ir = "memst #{subject.list.last.result_reg}, <<#{entry.alias}>> # #{subject.list[0].attrib} = #{subject.list.last.result_reg}"
     else # calc instructions
-      subject.ir = "#{subject.attrib} #{subject.result_reg}, #{subject.list.first.result_reg}, #{subject.list.last.result_reg}"
+      if subject.list.first.name == "NUM"
+        subject.ir = "#{subject.attrib} #{subject.result_reg}, #{subject.list.first.attrib}, #{subject.list.last.result_reg}"
+        subject.list.first.ir.clear
+      elsif subject.list.last.name == "NUM"
+        subject.ir = "#{subject.attrib} #{subject.result_reg}, #{subject.list.first.result_reg}, #{subject.list.last.attrib}"
+        subject.list.last.ir.clear
+      else
+        subject.ir = "#{subject.attrib} #{subject.result_reg}, #{subject.list.first.result_reg}, #{subject.list.last.result_reg}"
+      end
     end
   end
 

@@ -1,26 +1,15 @@
-int A = 3;                 // The only global variable
-{
-    int x = 2;             // A dynamic local variable (MARK)
-    {
-        int x = 10;        // Another dynamic local variable "shadowing" the x at MARK
-        if ( x == 10 ) {
-            A = 0;         // Changes the global A
-        }
-    }
+
+int x, y = 3, z = x;     // this is a not an error condition on z!
+const int A = 42;     
+int B = 0;
+
+if ( y > 2 + x ) {
+    int B = 2;
+    int y = -1;
+    int A = B / y;
+} else {
+    x = 27 << 2;
 }
-{
-    // y's value will be 2, since it should land in the same memory 
-    // location as the now de-allocated x at MARK
-    int y;                 
-    while ( y > 0 ) {
-        A = 1 + A;         // Changes the global A
-        y = y - 1;
-    }
-    // NO, BTW, this is not presented as sound and proper coding technique, rather
-    // it is contrived code that I can use to test that your symbol allocation is written
-    // to the requirements.
-}
-{
-    int A = 2;             // Causes an error, cannot shadow global variables.
-}
-return 0;
+
+B = (A + y)/(43*A) + B; 
+

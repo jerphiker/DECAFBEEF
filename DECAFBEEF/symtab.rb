@@ -63,7 +63,7 @@ class SymbolTable < SymbolEntry
   def enterSymbol name, a
     if !decalredLocally(name)
       if isGlobal(name)
-        raise ParseError.new( "Error: '" + name + "' already exists as a global")
+        # raise ParseError.new( "Error: '" + name + "' already exists as a global")
       else
         global = @table.length == 1
         if @namespace.include?(name)
