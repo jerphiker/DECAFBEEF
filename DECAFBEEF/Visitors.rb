@@ -1,4 +1,5 @@
 require 'set'
+require "./GetNextReg.rb"
 
 COMPARISON_OPERATORS = Set.new %w{== != <= >= < >}
 
@@ -160,7 +161,8 @@ class CalcExprVisitor < BaseVisitor
   def initialize sym, ast
     @sym = sym
     @ast = ast
-    @registers = ['R9', 'R10', 'R11', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8']
+    @getReg = GetNextReg.new
+    #@registers = ['R9', 'R10', 'R11', 'R1', 'R2', 'R3', 'R4', 'R5', 'R6', 'R7', 'R8']
   end
 
   def visit_Root subject
@@ -186,31 +188,42 @@ class CalcExprVisitor < BaseVisitor
     end
   end
 
-  def calc_tree subject, registers
-    subject.result_reg = registers.first
-    if subject.class == Literal then return end
+  def calc_tree subject
+  #def calc_tree subject, registers
+    subject.result_reg = @getReg.getNext
+    #subject.result_reg = registers.first
+    if subject.class == Literal
+      return
+    end
 
     left_count = get_needs subject.list.first
     right_count = get_needs subject.list.last
 
     if left_count >= right_count
-      calc_tree subject.list.first, registers
-      calc_tree subject.list.last, registers.drop(1)
+      calc_tree subject.list.first
+      calc_tree subject.list.last
+      #calc_tree subject.list.first, registers
+      #calc_tree subject.list.last, registers.drop(1)
     else
-      calc_tree subject.list.last, registers
-      calc_tree subject.list.first, registers.drop(1)
+      calc_tree subject.list.last
+      calc_tree subject.list.first
+      #calc_tree subject.list.last, registers
+      #calc_tree subject.list.first, registers.drop(1)
     end
   end
 
   def pre_Expr subject
     if subject.parent.class != Expr
-      calc_tree subject, @registers
+      calc_tree subject
+      #calc_tree subject, @registers
     end
   end
 
   def pre_Dec subject
     if subject.list.last.class != Expr
-      subject.list.last.result_reg = @registers.first
+      subject.list.last.result_reg = @getReg.getNext
+      @getReg.free(subject.list.last.result_reg)
+      #subject.list.last.result_reg = @registers.first
     end
   end
 end

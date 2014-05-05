@@ -2,14 +2,16 @@
 
 class GetNextReg
 
+	@@workRegs = ["R9", "R10", "R11"]
+	@@workRegInd = 0
+	@@allocRegs = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8"]
+	@@allocRegInd = 0
+	@@virtRegInd = 0
+	@@freeRegs = []
+	@@freeVirtRegs = []
+
 	def initialize
-		@@workRegs = ["R9", "R10", "R11"]
-		@@workRegInd = 0
-		@@allocRegs = ["R0", "R1", "R2", "R3", "R4", "R5", "R6", "R7", "R8"]
-		@@allocRegInd = 0
-		@@virtRegInd = 0
-		@@freeRegs = []
-		@@freeVirtRegs = []
+		# do nothing		
 	end
 
 	def getNext

@@ -61,7 +61,7 @@ end
 require "./AST.rb"
 require "./lang0.rex"
 require "./symtab.rb"
-require "./ir.rb"
+#require "./ir.rb"
 require "./Visitors.rb"
 
 ---- footer ----
